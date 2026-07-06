@@ -1,0 +1,13 @@
+.git/**
+.agents/**
+.codex/**
+docs/**
+README.md
+CHANGELOG.md
+.gitignore
+.claspignore
+.env
+.env.*
+node_modules/**
+tmp/**
+.tmp/**

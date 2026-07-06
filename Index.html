@@ -1,0 +1,752 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pembayaran SPP Dashboard</title>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- Midtrans Snap JS -->
+    <script src="https://app.sandbox.midtrans.com/snap/snap.js" data-client-key="<?= midtransClientKey ?>"></script>
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'IBM Plex Sans', sans-serif; background-color: #09090b; color: #fafafa; -webkit-font-smoothing: antialiased; }
+        [x-cloak] { display: none !important; }
+        .glass { background: rgba(255, 255, 255, 0.02); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.08); }
+        .glass-dark { background: rgba(0, 0, 0, 0.3); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.05); }
+        .focus-ring:focus-visible { outline: 2px solid #0C5CAB; outline-offset: 2px; }
+        .sidebar-item-active { background: rgba(12, 92, 171, 0.1); color: #3b82f6; border-right: 2px solid #0C5CAB; }
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #27272a; border-radius: 10px; }
+        .animate-in { animation: fadeIn 0.3s ease-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    </style>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        surface: '#09090b',
+                        primary: '#0C5CAB',
+                        secondary: '#0a4a8a',
+                        success: '#10b981',
+                        danger: '#ef4444'
+                    }
+                }
+            }
+        }
+    </script>
+
+    <script>
+        function app() {
+            return {
+                isLoggedIn: false,
+                loading: false,
+                mobileMenuOpen: false,
+                toasts: [],
+                view: 'dashboard',
+                user: {},
+                auth: { username: '', password: '' },
+                stats: { totalRevenue: 0, totalArrears: 0, activeSantriCount: 0 },
+                settings: { school_name: '', logo_url: '' },
+                santriList: [],
+                arrearsList: [],
+                selectedClassFilter: '',
+                unpaidBills: [],
+                showAddSantriModal: false,
+                showPaymentModal: false,
+                selectedSantri: null,
+                newSantri: { nama: '', kelas: '', kontak_ortu: '' },
+                genBill: { month: 'Januari', year: new Date().getFullYear(), nominal: 500000 },
+                paymentData: { id_santri: '', id_billing: '', amount: 0, method: 'Cash', proofBase64: '', penerima: '' },
+
+                init() {
+                    // Cek apakah ada sesi tersimpan di localStorage
+                    const savedUser = localStorage.getItem('spp_user');
+                    if (savedUser) {
+                        this.user = JSON.parse(savedUser);
+                        this.isLoggedIn = true;
+                        this.fetchDashboard();
+                    }
+                    
+                    this.fetchSettings();
+                    this.refreshIcons();
+                },
+
+                refreshIcons() {
+                    this.$nextTick(() => { lucide.createIcons(); });
+                },
+
+                fetchSettings() {
+                    google.script.run
+                        .withSuccessHandler(res => { if(res.ok) this.settings = { ...this.settings, ...res.data }; })
+                        .getAppSettings();
+                },
+
+                notify(message, type = 'success') {
+                    const id = Date.now();
+                    this.toasts.push({ id, message, type, show: true });
+                    setTimeout(() => {
+                        const toast = this.toasts.find(t => t.id === id);
+                        if (toast) toast.show = false;
+                    }, 3000);
+                },
+
+                handleLogin() {
+                    this.loading = true;
+                    google.script.run
+                        .withSuccessHandler(res => {
+                            this.loading = false;
+                            this.refreshIcons();
+                            if (res.ok) {
+                                this.isLoggedIn = true;
+                                this.user = res.user;
+                                // Simpan user ke localStorage agar tetap login saat refresh
+                                localStorage.setItem('spp_user', JSON.stringify(res.user));
+                                this.notify("Selamat datang kembali!");
+                                this.fetchDashboard();
+                            } else {
+                                this.notify(res.message, 'error');
+                            }
+                        })
+                        .withFailureHandler(err => {
+                            this.loading = false;
+                            this.notify(err.message, 'error');
+                        })
+                        .login(this.auth.username, this.auth.password);
+                },
+
+                fetchDashboard() {
+                    google.script.run
+                        .withSuccessHandler(res => { if(res.ok) this.stats = res.data.stats; })
+                        .getDashboardData();
+                },
+
+                fetchSantri() {
+                    this.loading = true;
+                    google.script.run
+                        .withSuccessHandler(res => {
+                            this.loading = false;
+                            if (res.ok) {
+                                this.santriList = res.data;
+                            } else {
+                                this.notify(res.message, 'error');
+                            }
+                            this.refreshIcons();
+                        })
+                        .withFailureHandler(err => {
+                            this.loading = false;
+                            this.notify(err.message, 'error');
+                        })
+                        .getSantriList();
+                },
+
+                fetchArrears() {
+                    this.loading = true;
+                    google.script.run
+                        .withSuccessHandler(res => {
+                            this.loading = false;
+                            if (res.ok) {
+                                this.arrearsList = res.data;
+                                this.selectedClassFilter = ''; 
+                            } else {
+                                this.notify(res.message, 'error');
+                            }
+                            this.refreshIcons();
+                        })
+                        .withFailureHandler(err => {
+                            this.loading = false;
+                            this.notify(err.message, 'error');
+                        })
+                        .getArrearsRecap();
+                },
+
+                get uniqueClasses() {
+                    const classes = this.arrearsList.map(a => a.kelas);
+                    return [...new Set(classes)].sort();
+                },
+
+                getFilteredArrears() {
+                    if (!this.selectedClassFilter) return this.arrearsList;
+                    return this.arrearsList.filter(a => a.kelas === this.selectedClassFilter);
+                },
+
+                handleAddSantri() {
+                    if(!this.newSantri.nama) return this.notify("Nama wajib diisi", "error");
+                    this.loading = true;
+                    google.script.run
+                        .withSuccessHandler(res => {
+                            this.loading = false;
+                            this.showAddSantriModal = false;
+                            this.notify(res.message);
+                            this.fetchSantri();
+                            this.newSantri = { nama: '', kelas: '', kontak_ortu: '' };
+                        })
+                        .withFailureHandler(err => {
+                            this.loading = false;
+                            this.notify(err.message, 'error');
+                        })
+                        .addSantri(this.newSantri);
+                },
+
+                openPaymentModal(santri) {
+                    this.selectedSantri = santri;
+                    this.paymentData.id_santri = santri.id_santri;
+                    this.paymentData.penerima = this.user.username;
+                    this.loading = true;
+                    google.script.run
+                        .withSuccessHandler(res => {
+                            this.loading = false;
+                            this.unpaidBills = res.data;
+                            this.showPaymentModal = true;
+                            this.refreshIcons();
+                        })
+                        .withFailureHandler(err => {
+                            this.loading = false;
+                            this.notify(err.message, 'error');
+                        })
+                        .getUnpaidBills(santri.id_santri);
+                },
+
+                handleFileUpload(e) {
+                    const file = e.target.files[0];
+                    if(!file) return;
+                    const reader = new FileReader();
+                    reader.onload = (f) => { this.paymentData.proofBase64 = f.target.result; };
+                    reader.readAsDataURL(file);
+                },
+
+                handleProcessPayment() {
+                    if(!this.paymentData.id_billing) return this.notify("Pilih tagihan!", "error");
+                    
+                    const bill = this.unpaidBills.find(b => b.id_billing === this.paymentData.id_billing);
+                    if(!bill) return this.notify("Tagihan tidak ditemukan", "error");
+                    
+                    this.paymentData.amount = bill.nominal;
+                    this.loading = true;
+
+                    google.script.run
+                        .withSuccessHandler(res => {
+                            this.loading = false;
+                            if (res.ok) {
+                                if (window.snap && typeof window.snap.pay === 'function' && res.token) {
+                                    window.snap.pay(res.token, {
+                                        onSuccess: (result) => {
+                                            this.notify("Pembayaran Berhasil!");
+                                            this.showPaymentModal = false;
+                                            this.fetchDashboard();
+                                        },
+                                        onPending: () => {
+                                            this.notify("Menunggu pembayaran...");
+                                            this.showPaymentModal = false;
+                                        },
+                                        onError: () => {
+                                            this.notify("Pembayaran gagal", "error");
+                                        },
+                                        onClose: () => {
+                                            this.notify("Pembayaran dibatalkan");
+                                        }
+                                    });
+                                } else if (res.redirect_url) {
+                                    window.open(res.redirect_url, '_blank');
+                                    this.notify("Link pembayaran berhasil dibuat");
+                                } else {
+                                    this.notify("Token pembayaran tidak tersedia", "error");
+                                }
+                            } else {
+                                this.notify(res.message, 'error');
+                            }
+                        })
+                        .withFailureHandler(err => {
+                            this.loading = false;
+                            this.notify(err.message, 'error');
+                        })
+                        .createMidtransTransaction(this.paymentData);
+                },
+
+                handleGenerateBills() {
+                    if(!confirm("Generate tagihan untuk semua santri aktif?")) return this.notify("Konfirmasi diperlukan", "error");
+                    this.loading = true;
+                    google.script.run
+                        .withSuccessHandler(res => {
+                            this.loading = false;
+                            this.notify(res.message);
+                        })
+                        .withFailureHandler(err => {
+                            this.loading = false;
+                            this.notify(err.message, 'error');
+                        })
+                        .generateMonthlyBills(this.genBill.month, this.genBill.year, this.genBill.nominal);
+                },
+
+                sendPaymentLink(santri) {
+                    this.loading = true;
+                    google.script.run
+                        .withSuccessHandler(res => {
+                            this.loading = false;
+                            const paymentLink = res.redirect_url || res.link;
+                            const msg = `Assalamu'alaikum Wr. Wb.\n\nMohon Bapak/Ibu melakukan pembayaran SPP an. *${santri.nama}* melalui link resmi berikut:\n\n${paymentLink}\n\nTerima kasih.`;
+                            const waUrl = `https://wa.me/${santri.kontak_ortu}?text=${encodeURIComponent(msg)}`;
+                            window.open(waUrl, '_blank');
+                            this.notify("Link pembayaran dikirim ke WA");
+                        })
+                        .withFailureHandler(err => {
+                            this.loading = false;
+                            this.notify(err.message, 'error');
+                        })
+                        .generatePaymentLink(santri.id_santri);
+                },
+
+                saveSetting(key, value) {
+                    this.loading = true;
+                    google.script.run
+                        .withSuccessHandler(() => {
+                            this.loading = false;
+                            this.notify("Pengaturan disimpan");
+                        })
+                        .withFailureHandler(err => {
+                            this.loading = false;
+                            this.notify(err.message, 'error');
+                        })
+                        .updateAppSetting(key, value);
+                },
+
+                handleLogoUpload(e) {
+                    const file = e.target.files[0];
+                    if (!file) return;
+                    this.loading = true;
+                    const reader = new FileReader();
+                    reader.onload = (f) => {
+                        google.script.run
+                            .withSuccessHandler(res => {
+                                this.loading = false;
+                                this.settings.logo_url = res.url;
+                                this.notify("Logo berhasil diperbarui");
+                                this.refreshIcons();
+                            })
+                            .withFailureHandler(err => {
+                                this.loading = false;
+                                this.notify(err.message, 'error');
+                            })
+                            .saveSchoolLogo(f.target.result);
+                    };
+                    reader.readAsDataURL(file);
+                },
+
+                viewTitle() {
+                    const titles = { 'dashboard': 'Overview', 'santri': 'Data Santri', 'billing': 'Tagihan Bulanan', 'arrears': 'Rekap Tunggakan', 'settings': 'Pengaturan' };
+                    return titles[this.view];
+                },
+
+                formatCurrency(val) {
+                    return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(val);
+                },
+
+                logout() {
+                    // Hapus sesi dari localStorage
+                    localStorage.removeItem('spp_user');
+                    this.isLoggedIn = false;
+                    this.user = {};
+                    this.auth = { username: '', password: '' };
+                    this.refreshIcons();
+                    this.notify("Anda telah keluar");
+                },
+            }
+        }
+    </script>
+</head>
+<body x-data="app()" x-init="init()" class="min-h-screen relative">
+
+    <!-- Global Loading Overlay -->
+    <div x-show="loading" x-cloak class="fixed inset-0 z-[100] bg-surface/60 backdrop-blur-sm flex items-center justify-center">
+        <div class="flex flex-col items-center gap-3">
+            <svg class="animate-spin h-10 w-10 text-primary" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            <span class="text-sm font-medium text-zinc-400">Processing...</span>
+        </div>
+    </div>
+
+    <!-- Toast Notifications -->
+    <div class="fixed bottom-4 right-4 z-[110] space-y-2">
+        <template x-for="toast in toasts" :key="toast.id">
+            <div x-show="toast.show" x-transition class="glass px-6 py-3 rounded-xl shadow-2xl flex items-center gap-3 border-l-4" 
+                 :class="toast.type === 'success' ? 'border-success' : 'border-danger'">
+                <i :data-lucide="toast.type === 'success' ? 'check-circle' : 'alert-circle'" class="w-5 h-5" :class="toast.type === 'success' ? 'text-success' : 'text-danger'"></i>
+                <span class="text-sm font-medium" x-text="toast.message"></span>
+            </div>
+        </template>
+    </div>
+
+    <!-- Login Screen -->
+    <div x-show="!isLoggedIn" x-cloak class="flex items-center justify-center min-h-screen p-4 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-primary/20 via-surface to-surface">
+        <div class="w-full max-w-md animate-in">
+            <div class="glass p-10 rounded-3xl shadow-2xl relative overflow-hidden">
+                <div class="absolute -top-24 -right-24 w-48 h-48 bg-primary/20 rounded-full blur-3xl"></div>
+                <div class="relative z-10">
+                    <div class="text-center mb-10">
+                        <template x-if="settings.logo_url">
+                            <img :src="settings.logo_url" class="w-20 h-20 object-contain mx-auto mb-4 rounded-xl shadow-lg border border-white/10">
+                        </template>
+                        <template x-if="!settings.logo_url">
+                            <div class="inline-flex items-center justify-center w-16 h-16 bg-primary/10 rounded-2xl mb-4 border border-primary/20 shadow-[0_0_20px_rgba(12,92,171,0.3)]">
+                                <i data-lucide="graduation-cap" class="w-8 h-8 text-primary"></i>
+                            </div>
+                        </template>
+                        <h1 class="text-3xl font-bold tracking-tight text-white" x-text="settings.school_name || 'Login Admin'"></h1>
+                        <p class="text-zinc-400 mt-2 text-sm">Sistem Administrasi SPP Pesantren</p>
+                    </div>
+                    <form @submit.prevent="handleLogin" class="space-y-5">
+                        <div class="space-y-1.5">
+                            <label class="text-xs font-semibold uppercase tracking-wider text-zinc-500 ml-1">Username</label>
+                            <div class="relative">
+                                <i data-lucide="user" class="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500"></i>
+                                <input type="text" x-model="auth.username" class="w-full bg-zinc-950/50 border border-zinc-800 rounded-xl pl-11 pr-4 py-3 text-sm focus:ring-2 focus:ring-primary/50 focus:border-primary outline-none transition-all" placeholder="Masukkan username" required>
+                            </div>
+                        </div>
+                        <div class="space-y-1.5">
+                            <label class="text-xs font-semibold uppercase tracking-wider text-zinc-500 ml-1">Password</label>
+                            <div class="relative">
+                                <i data-lucide="lock" class="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500"></i>
+                                <input type="password" x-model="auth.password" class="w-full bg-zinc-950/50 border border-zinc-800 rounded-xl pl-11 pr-4 py-3 text-sm focus:ring-2 focus:ring-primary/50 focus:border-primary outline-none transition-all" placeholder="••••••••" required>
+                            </div>
+                        </div>
+                        <button type="submit" class="w-full bg-primary hover:bg-secondary text-white py-3.5 rounded-xl font-bold transition-all transform active:scale-[0.98] shadow-lg shadow-primary/20 flex items-center justify-center gap-2">
+                            <span>Masuk ke Dashboard</span>
+                            <i data-lucide="arrow-right" class="w-4 h-4"></i>
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Dashboard -->
+    <div x-show="isLoggedIn" x-cloak class="flex flex-col md:flex-row min-h-screen bg-surface">
+        <!-- Mobile Header -->
+        <div class="md:hidden glass border-b border-zinc-800 p-4 flex justify-between items-center sticky top-0 z-40">
+            <h2 class="text-lg font-bold text-primary">SPP Manager</h2>
+            <button @click="mobileMenuOpen = !mobileMenuOpen" class="p-2 hover:bg-zinc-800 rounded-lg">
+                <i data-lucide="menu" class="w-6 h-6"></i>
+            </button>
+        </div>
+
+        <!-- Sidebar -->
+        <aside :class="mobileMenuOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'" 
+               class="fixed inset-y-0 left-0 z-50 w-64 glass border-r border-zinc-800 p-6 flex flex-col transition-transform duration-300 md:relative">
+            <div class="flex items-center gap-3 mb-10">
+                <template x-if="settings.logo_url">
+                    <img :src="settings.logo_url" class="w-10 h-10 object-contain rounded-lg">
+                </template>
+                <template x-if="!settings.logo_url">
+                    <div class="w-10 h-10 bg-primary rounded-lg flex items-center justify-center">
+                        <i data-lucide="graduation-cap" class="w-6 h-6 text-white"></i>
+                    </div>
+                </template>
+                <h2 class="text-xl font-bold tracking-tight truncate" x-text="settings.school_name || 'SPP Manager'"></h2>
+            </div>
+            
+            <nav class="space-y-1.5 flex-1">
+                <button @click="view = 'dashboard'; mobileMenuOpen = false" :class="view === 'dashboard' ? 'sidebar-item-active' : 'text-zinc-400 hover:bg-zinc-800/50 hover:text-white'" class="w-full text-left px-4 py-3 rounded-xl flex items-center gap-3 transition-all group">
+                    <i data-lucide="layout-dashboard" class="w-5 h-5"></i>
+                    <span class="font-medium">Dashboard</span>
+                </button>
+                <button @click="view = 'santri'; fetchSantri(); mobileMenuOpen = false" :class="view === 'santri' ? 'sidebar-item-active' : 'text-zinc-400 hover:bg-zinc-800/50 hover:text-white'" class="w-full text-left px-4 py-3 rounded-xl flex items-center gap-3 transition-all group">
+                    <i data-lucide="users" class="w-5 h-5"></i>
+                    <span class="font-medium">Data Santri</span>
+                </button>
+                <button @click="view = 'billing'; mobileMenuOpen = false" :class="view === 'billing' ? 'sidebar-item-active' : 'text-zinc-400 hover:bg-zinc-800/50 hover:text-white'" class="w-full text-left px-4 py-3 rounded-xl flex items-center gap-3 transition-all group">
+                    <i data-lucide="file-text" class="w-5 h-5"></i>
+                    <span class="font-medium">Tagihan</span>
+                </button>
+                <button @click="view = 'arrears'; fetchArrears(); mobileMenuOpen = false" :class="view === 'arrears' ? 'sidebar-item-active' : 'text-zinc-400 hover:bg-zinc-800/50 hover:text-white'" class="w-full text-left px-4 py-3 rounded-xl flex items-center gap-3 transition-all group">
+                    <i data-lucide="clock" class="w-5 h-5"></i>
+                    <span class="font-medium">Rekap Tunggakan</span>
+                </button>
+                <button @click="view = 'settings'; mobileMenuOpen = false" :class="view === 'settings' ? 'sidebar-item-active' : 'text-zinc-400 hover:bg-zinc-800/50 hover:text-white'" class="w-full text-left px-4 py-3 rounded-xl flex items-center gap-3 transition-all group">
+                    <i data-lucide="settings" class="w-5 h-5"></i>
+                    <span class="font-medium">Pengaturan</span>
+                </button>
+            </nav>
+
+            <div class="pt-6 border-t border-zinc-800">
+                <div class="flex items-center gap-3 px-4 py-3 mb-4">
+                    <div class="w-8 h-8 rounded-full bg-zinc-800 flex items-center justify-center text-xs font-bold" x-text="user.username?.charAt(0).toUpperCase()"></div>
+                    <div class="overflow-hidden">
+                        <p class="text-sm font-medium truncate" x-text="user.username"></p>
+                        <p class="text-xs text-zinc-500 truncate" x-text="user.role"></p>
+                    </div>
+                </div>
+                <button @click="logout" class="w-full text-zinc-500 hover:text-danger px-4 py-2 rounded-lg flex items-center gap-3 transition-colors">
+                    <i data-lucide="log-out" class="w-4 h-4"></i>
+                    <span class="text-sm font-medium">Logout</span>
+                </button>
+            </div>
+        </aside>
+
+        <main class="flex-1 p-6 md:p-10 overflow-y-auto relative">
+            <header class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-10">
+                <div>
+                    <h1 class="text-3xl font-bold tracking-tight" x-text="viewTitle()"></h1>
+                    <p class="text-zinc-400 mt-1">Sistem Informasi Pembayaran SPP Pesantren</p>
+                </div>
+            </header>
+
+            <!-- Dashboard View -->
+            <div x-show="view === 'dashboard'" class="animate-in space-y-10">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div class="glass p-6 rounded-2xl border-l-4 border-l-primary">
+                        <div class="flex justify-between items-start mb-4">
+                            <div class="p-2 bg-primary/10 rounded-lg"><i data-lucide="wallet" class="w-5 h-5 text-primary"></i></div>
+                            <span class="text-[10px] font-bold uppercase tracking-widest text-zinc-500">Total Pendapatan</span>
+                        </div>
+                        <h3 class="text-3xl font-bold tracking-tight" x-text="formatCurrency(stats.totalRevenue)"></h3>
+                    </div>
+                    <div class="glass p-6 rounded-2xl border-l-4 border-l-danger">
+                        <div class="flex justify-between items-start mb-4">
+                            <div class="p-2 bg-danger/10 rounded-lg"><i data-lucide="alert-triangle" class="w-5 h-5 text-danger"></i></div>
+                            <span class="text-[10px] font-bold uppercase tracking-widest text-zinc-500">Total Tunggakan</span>
+                        </div>
+                        <h3 class="text-3xl font-bold tracking-tight text-danger" x-text="formatCurrency(stats.totalArrears)"></h3>
+                    </div>
+                    <div class="glass p-6 rounded-2xl border-l-4 border-l-success">
+                        <div class="flex justify-between items-start mb-4">
+                            <div class="p-2 bg-success/10 rounded-lg"><i data-lucide="users" class="w-5 h-5 text-success"></i></div>
+                            <span class="text-[10px] font-bold uppercase tracking-widest text-zinc-500">Santri Aktif</span>
+                        </div>
+                        <div class="flex items-baseline gap-2">
+                            <h3 class="text-3xl font-bold tracking-tight" x-text="stats.activeSantriCount"></h3>
+                            <span class="text-zinc-500 text-sm font-medium">Orang</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <div class="glass p-8 rounded-3xl">
+                        <h4 class="text-lg font-bold mb-6 flex items-center gap-2"><i data-lucide="zap" class="w-5 h-5 text-primary"></i>Aksi Cepat</h4>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <button @click="showAddSantriModal = true" class="p-4 bg-zinc-900/50 border border-zinc-800 rounded-2xl hover:border-primary/50 transition-all text-left group">
+                                <i data-lucide="user-plus" class="w-6 h-6 text-zinc-400 group-hover:text-primary mb-3"></i>
+                                <p class="text-sm font-bold">Tambah Santri</p>
+                                <p class="text-xs text-zinc-500">Registrasi santri baru</p>
+                            </button>
+                            <button @click="view = 'billing'" class="p-4 bg-zinc-900/50 border border-zinc-800 rounded-2xl hover:border-primary/50 transition-all text-left group">
+                                <i data-lucide="file-plus" class="w-6 h-6 text-zinc-400 group-hover:text-primary mb-3"></i>
+                                <p class="text-sm font-bold">Buat Tagihan</p>
+                                <p class="text-xs text-zinc-500">Generate SPP bulanan</p>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Santri View -->
+            <div x-show="view === 'santri'" class="animate-in space-y-4">
+                <div class="flex flex-col sm:flex-row justify-between gap-4 mb-4">
+                    <input type="text" placeholder="Search santri..." class="bg-zinc-900 border border-zinc-800 rounded-lg px-4 py-2 w-full sm:w-64 outline-none focus:ring-1 focus:ring-primary">
+                    <button @click="showAddSantriModal = true" class="bg-primary px-4 py-2 rounded-lg font-semibold whitespace-nowrap">+ Tambah Santri</button>
+                </div>
+                <div class="glass rounded-2xl overflow-hidden">
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left">
+                            <thead class="bg-zinc-900/50 text-zinc-400 text-xs uppercase">
+                                <tr>
+                                    <th class="p-4">ID</th>
+                                    <th class="p-4">Nama</th>
+                                    <th class="p-4">Kelas</th>
+                                    <th class="p-4">Status</th>
+                                    <th class="p-4">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-zinc-800">
+                                <template x-for="s in santriList" :key="s.id_santri">
+                                    <tr class="hover:bg-zinc-800/50 transition-colors">
+                                        <td class="p-4 text-zinc-400" x-text="s.id_santri"></td>
+                                        <td class="p-4 font-semibold" x-text="s.nama"></td>
+                                        <td class="p-4" x-text="s.kelas"></td>
+                                        <td class="p-4">
+                                            <span class="px-2 py-1 rounded text-xs" :class="s.status === 'Aktif' ? 'bg-success/20 text-success' : 'bg-zinc-800 text-zinc-400'" x-text="s.status"></span>
+                                        </td>
+                                        <td class="p-4 flex gap-3">
+                                            <button @click="openPaymentModal(s)" class="text-primary hover:underline text-sm font-semibold">Bayar SPP</button>
+                                            <button @click="sendPaymentLink(s)" class="text-success hover:underline text-sm font-semibold">Kirim Link</button>
+                                        </td>
+                                    </tr>
+                                </template>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Billing View -->
+            <div x-show="view === 'billing'" class="animate-in">
+                <div class="glass p-8 rounded-2xl max-w-lg">
+                    <h2 class="text-xl font-bold mb-6">Generate Monthly Bills</h2>
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm mb-1 text-zinc-400">Bulan & Tahun</label>
+                            <div class="grid grid-cols-2 gap-4">
+                                <select x-model="genBill.month" class="bg-zinc-900 border border-zinc-800 rounded-lg p-2.5 outline-none focus:ring-1 focus:ring-primary">
+                                    <option value="Januari">Januari</option>
+                                    <option value="Februari">Februari</option>
+                                    <option value="Maret">Maret</option>
+                                    <option value="April">April</option>
+                                    <option value="Mei">Mei</option>
+                                    <option value="Juni">Juni</option>
+                                    <option value="Juli">Juli</option>
+                                    <option value="Agustus">Agustus</option>
+                                    <option value="September">September</option>
+                                    <option value="Oktober">Oktober</option>
+                                    <option value="November">November</option>
+                                    <option value="Desember">Desember</option>
+                                </select>
+                                <input type="number" x-model="genBill.year" class="bg-zinc-900 border border-zinc-800 rounded-lg p-2.5 outline-none focus:ring-1 focus:ring-primary">
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-sm mb-1 text-zinc-400">Nominal (Rp)</label>
+                            <input type="number" x-model="genBill.nominal" class="w-full bg-zinc-900 border border-zinc-800 rounded-lg p-2.5 outline-none focus:ring-1 focus:ring-primary">
+                        </div>
+                        <button @click="handleGenerateBills" class="w-full bg-primary py-3 rounded-lg font-semibold">Generate for All Active Santri</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Arrears View -->
+            <div x-show="view === 'arrears'" class="animate-in space-y-4">
+                <div class="flex flex-col sm:flex-row justify-between gap-4 mb-4">
+                    <div class="flex items-center gap-3">
+                        <label class="text-sm font-medium text-zinc-400">Filter Kelas:</label>
+                        <select x-model="selectedClassFilter" class="bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-primary">
+                            <option value="">Semua Kelas</option>
+                            <template x-for="cls in uniqueClasses" :key="cls">
+                                <option :value="cls" x-text="cls"></option>
+                            </template>
+                        </select>
+                    </div>
+                    <div class="text-sm text-zinc-500">
+                        Menampilkan <span class="text-white font-bold" x-text="getFilteredArrears().length"></span> tunggakan
+                    </div>
+                </div>
+                <div class="glass rounded-2xl overflow-hidden">
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left">
+                            <thead class="bg-zinc-900/50 text-zinc-400 text-xs uppercase">
+                                <tr>
+                                    <th class="p-4">Nama</th>
+                                    <th class="p-4">Kelas</th>
+                                    <th class="p-4">Bulan/Tahun</th>
+                                    <th class="p-4">Nominal</th>
+                                    <th class="p-4">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-zinc-800">
+                                <template x-for="a in getFilteredArrears()" :key="a.id_billing">
+                                    <tr class="hover:bg-zinc-800/50 transition-colors">
+                                        <td class="p-4 font-semibold" x-text="a.nama"></td>
+                                        <td class="p-4" x-text="a.kelas"></td>
+                                        <td class="p-4" x-text="a.bulan + ' ' + a.tahun"></td>
+                                        <td class="p-4 text-danger font-semibold" x-text="formatCurrency(a.nominal)"></td>
+                                        <td class="p-4">
+                                            <a :href="'https://wa.me/' + a.kontak + '?text=Assalamu%27alaikum%2C%20mohon%20segera%20melunasi%20SPP%20bulan%20' + a.bulan" target="_blank" class="bg-success/20 text-success px-3 py-1 rounded text-xs font-semibold">Remind WA</a>
+                                        </td>
+                                    </tr>
+                                </template>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Settings View -->
+            <div x-show="view === 'settings'" class="animate-in">
+                <div class="max-w-2xl space-y-6">
+                    <div class="glass p-8 rounded-3xl">
+                        <h3 class="text-xl font-bold mb-6 flex items-center gap-2"><i data-lucide="school" class="w-5 h-5 text-primary"></i>Profil Pesantren</h3>
+                        <div class="space-y-4">
+                            <div>
+                                <label class="block text-sm font-medium text-zinc-400 mb-2">Nama Pesantren</label>
+                                <div class="flex gap-2">
+                                    <input type="text" x-model="settings.school_name" class="flex-1 bg-zinc-900 border border-zinc-800 rounded-xl px-4 py-2.5 outline-none focus:border-primary">
+                                    <button @click="saveSetting('school_name', settings.school_name)" class="bg-primary px-4 py-2 rounded-xl text-sm font-bold">Simpan</button>
+                                </div>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-zinc-400 mb-2">Logo Sekolah</label>
+                                <div class="flex items-center gap-6 p-4 bg-zinc-900/50 border border-zinc-800 border-dashed rounded-2xl">
+                                    <div class="w-20 h-20 bg-zinc-800 rounded-xl flex items-center justify-center overflow-hidden border border-zinc-700">
+                                        <template x-if="settings.logo_url">
+                                            <img :src="settings.logo_url" class="w-full h-full object-contain">
+                                        </template>
+                                        <template x-if="!settings.logo_url">
+                                            <i data-lucide="image" class="w-8 h-8 text-zinc-600"></i>
+                                        </template>
+                                    </div>
+                                    <div class="flex-1">
+                                        <input type="file" @change="handleLogoUpload" class="block w-full text-sm text-zinc-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-bold file:bg-primary/10 file:text-primary hover:file:bg-primary/20 cursor-pointer">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Payment Modal -->
+    <div x-show="showPaymentModal" x-cloak class="fixed inset-0 bg-black/80 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
+        <div class="glass p-8 rounded-2xl w-full max-w-md" @click.away="showPaymentModal = false">
+            <h2 class="text-xl font-bold mb-4">Process Payment</h2>
+            <p class="text-zinc-400 mb-6">Student: <span class="text-white" x-text="selectedSantri?.nama"></span></p>
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm mb-1 text-zinc-400">Select Bill</label>
+                    <select x-model="paymentData.id_billing" class="w-full bg-zinc-900 border border-zinc-800 rounded-lg p-2.5 outline-none focus:ring-1 focus:ring-primary">
+                        <option value="">-- Choose Bill --</option>
+                        <template x-for="b in unpaidBills" :key="b.id_billing">
+                            <option :value="b.id_billing" x-text="b.bulan + ' ' + b.tahun + ' (Rp ' + b.nominal + ')'"></option>
+                        </template>
+                    </select>
+                </div>
+                <div>
+                    <p class="text-xs text-zinc-500 mb-2 italic">Pembayaran akan diproses melalui Midtrans Gateway (QRIS, VA, E-Wallet)</p>
+                </div>
+                <div class="flex gap-4 mt-8">
+                    <button @click="showPaymentModal = false" class="flex-1 bg-zinc-800 py-3 rounded-lg">Cancel</button>
+                    <button @click="handleProcessPayment" class="flex-1 bg-primary py-3 rounded-lg font-semibold">Confirm</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Santri Modal -->
+    <div x-show="showAddSantriModal" x-cloak class="fixed inset-0 bg-black/80 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
+        <div class="glass p-8 rounded-2xl w-full max-w-md" @click.away="showAddSantriModal = false">
+            <h2 class="text-xl font-bold mb-6">Tambah Santri Baru</h2>
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm mb-1 text-zinc-400">Nama Lengkap</label>
+                    <input type="text" x-model="newSantri.nama" class="w-full bg-zinc-900 border border-zinc-800 rounded-lg p-2.5 outline-none focus:ring-1 focus:ring-primary">
+                </div>
+                <div>
+                    <label class="block text-sm mb-1 text-zinc-400">Kelas</label>
+                    <input type="text" x-model="newSantri.kelas" class="w-full bg-zinc-800 rounded-lg p-2.5 outline-none focus:ring-1 focus:ring-primary">
+                </div>
+                <div>
+                    <label class="block text-sm mb-1 text-zinc-400">WhatsApp Ortu (62xxx)</label>
+                    <input type="text" x-model="newSantri.kontak_ortu" class="w-full bg-zinc-900 border border-zinc-800 rounded-lg p-2.5 outline-none focus:ring-s-1 focus:ring-primary">
+                </div>
+                <div class="flex gap-4 mt-6">
+                    <button @click="showAddSantriModal = false" class="flex-1 bg-zinc-800 py-3 rounded-lg">Batal</button>
+                    <button @click="handleAddSantri" class="flex-1 bg-primary py-3 rounded-lg font-semibold">Simpan</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</body>
+</html>
