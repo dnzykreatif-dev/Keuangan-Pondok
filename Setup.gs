@@ -3,6 +3,8 @@ function setupDatabase() {
     ensureSheet(sheetName, headers);
   }
 
+  seedAccountingDefaults();
+
   const userSheet = getSheetOrThrow('users');
   if (userSheet.getLastRow() === 1) {
     userSheet.appendRow([

@@ -15,6 +15,8 @@ Roadmap ini menerjemahkan kebutuhan Pedoman Akuntansi Pesantren (PAP) ke impleme
 
 Tujuan fase ini adalah mengubah aplikasi dari pencatatan tagihan menjadi sistem akuntansi dasar.
 
+Status: sebagian sudah diimplementasikan sebagai pondasi awal.
+
 Fitur utama:
 
 - Master akun atau chart of accounts pesantren.
@@ -28,6 +30,7 @@ Fitur utama:
 - Buku besar per akun.
 - Audit log perubahan penting.
 - Posting otomatis pembayaran SPP ke jurnal.
+- Menu jurnal dan laporan dasar.
 
 Contoh posting SPP:
 

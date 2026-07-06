@@ -21,6 +21,8 @@ Alur umum:
 - `Santri.gs`: CRUD ringan santri dan tagihan belum lunas.
 - `Billing.gs`: dashboard, tagihan bulanan, dan rekap tunggakan.
 - `Payment.gs`: Midtrans Snap, transaksi pending, link pembayaran, dan webhook.
+- `Accounting.gs`: master akun, dana, posting jurnal double-entry, audit log, dan neraca saldo.
+- `Reports.gs`: laporan dasar dari data jurnal.
 - `Settings.gs`: profil lembaga dan upload logo.
 
 ## 3. Struktur Sheet Saat Ini
@@ -74,6 +76,54 @@ Alur umum:
 | `key` | Nama pengaturan |
 | `value` | Nilai pengaturan |
 
+### `accounts`
+
+| Kolom | Fungsi |
+| --- | --- |
+| `account_id` | ID akun |
+| `code` | Kode akun |
+| `name` | Nama akun |
+| `type` | Tipe akun |
+| `report_category` | Kategori laporan |
+| `normal_balance` | Saldo normal |
+| `is_active` | Status aktif |
+
+### `funds`
+
+| Kolom | Fungsi |
+| --- | --- |
+| `fund_id` | ID dana |
+| `name` | Nama dana |
+| `restriction_type` | Tidak terikat, terikat sementara, atau terikat permanen |
+| `is_active` | Status aktif |
+
+### `journal_entries`
+
+| Kolom | Fungsi |
+| --- | --- |
+| `journal_id` | ID jurnal |
+| `date` | Tanggal jurnal |
+| `description` | Deskripsi |
+| `source_type` | Sumber, contoh `billing` atau `payment` |
+| `source_id` | ID sumber |
+| `fund_id` | Dana terkait |
+| `status` | Status jurnal |
+| `created_at` | Waktu dibuat |
+| `created_by` | Pembuat |
+
+### `journal_lines`
+
+| Kolom | Fungsi |
+| --- | --- |
+| `line_id` | ID baris jurnal |
+| `journal_id` | Relasi ke jurnal |
+| `account_id` | Relasi ke akun |
+| `account_code` | Kode akun saat posting |
+| `account_name` | Nama akun saat posting |
+| `debit` | Nilai debit |
+| `credit` | Nilai kredit |
+| `memo` | Catatan baris |
+
 ## 4. Konfigurasi
 
 Konfigurasi utama berada di `Config.gs`.
@@ -122,13 +172,10 @@ Alur pembayaran:
 
 ## 8. Arah Teknis PAP
 
-Pengembangan PAP perlu menambah lapisan akuntansi double-entry tanpa membuang modul SPP yang sudah ada. Modul SPP menjadi salah satu sumber transaksi yang melakukan posting otomatis ke jurnal.
+Pengembangan PAP menambah lapisan akuntansi double-entry tanpa membuang modul SPP yang sudah ada. Modul SPP menjadi salah satu sumber transaksi yang melakukan posting otomatis ke jurnal.
 
-Sheet target fase berikutnya:
+Posting otomatis saat ini:
 
-- `accounts`
-- `journal_entries`
-- `journal_lines`
-- `funds`
-- `fiscal_periods`
-- `audit_logs`
+- Saat tagihan SPP dibuat: debit `Piutang SPP`, kredit `Pendapatan SPP`.
+- Saat pembayaran Midtrans sukses: debit `Kas/Bank`, kredit `Piutang SPP`.
+- Setiap posting menyimpan `source_type` dan `source_id` untuk mencegah jurnal dobel.

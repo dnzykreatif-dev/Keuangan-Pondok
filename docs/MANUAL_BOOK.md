@@ -90,7 +90,34 @@ Fitur yang tersedia:
 
 Gunakan menu ini untuk penagihan rutin mingguan atau bulanan.
 
-## 8. Pengaturan Profil
+## 8. Jurnal
+
+Menu `Jurnal` menampilkan posting otomatis dari aktivitas SPP.
+
+Jurnal yang muncul saat ini:
+
+- Tagihan SPP: debit `Piutang SPP`, kredit `Pendapatan SPP`.
+- Pembayaran sukses: debit `Kas/Bank`, kredit `Piutang SPP`.
+
+Kolom `Status` harus menunjukkan `Balance`. Jika ada jurnal tidak balance, jangan jadikan laporan sebagai acuan sebelum data diperiksa.
+
+## 9. Laporan
+
+Menu `Laporan` menampilkan ringkasan awal dari jurnal double-entry.
+
+Isi laporan:
+
+- Kas/Bank.
+- Piutang SPP.
+- Total debit.
+- Total kredit.
+- Status balance.
+- Neraca saldo.
+- Ringkasan aset neto berdasarkan dana.
+
+Fitur ini adalah pondasi awal menuju laporan PAP lengkap.
+
+## 10. Pengaturan Profil
 
 Menu `Pengaturan` digunakan untuk mengubah identitas lembaga.
 
@@ -108,17 +135,19 @@ Menu `Pengaturan` digunakan untuk mengubah identitas lembaga.
 
 Logo disimpan di Google Drive dan link-nya dicatat ke sheet `settings`.
 
-## 9. Kebiasaan Operasional Yang Disarankan
+## 11. Kebiasaan Operasional Yang Disarankan
 
 - Generate tagihan pada awal bulan.
 - Cek rekap tunggakan minimal sekali seminggu.
 - Pastikan nomor WhatsApp wali santri benar.
 - Rekonsiliasi transaksi Midtrans dengan dashboard Midtrans.
+- Cek menu `Jurnal` setelah generate tagihan dan pembayaran.
+- Cek menu `Laporan` sebelum membuat rekap keuangan internal.
 - Backup spreadsheet secara berkala.
 
-## 10. Batasan Versi Saat Ini
+## 12. Batasan Versi Saat Ini
 
 - Belum ada laporan akuntansi PAP lengkap.
 - Belum ada validasi sesi server-side.
-- Belum ada modul jurnal umum, buku besar, aset, wakaf, persediaan, atau bisaroh.
+- Belum ada input jurnal manual, buku besar detail, aset, wakaf, persediaan, atau bisaroh.
 - Midtrans masih diarahkan ke endpoint sandbox.

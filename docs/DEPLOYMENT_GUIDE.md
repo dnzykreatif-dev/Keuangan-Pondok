@@ -62,6 +62,12 @@ Fungsi ini membuat sheet:
 - `billings`
 - `transactions`
 - `settings`
+- `accounts`
+- `funds`
+- `fiscal_periods`
+- `journal_entries`
+- `journal_lines`
+- `audit_logs`
 
 Default login:
 
@@ -103,9 +109,11 @@ Pastikan mode Midtrans sesuai:
 2. Login sebagai admin.
 3. Tambah santri.
 4. Generate tagihan.
-5. Buka pembayaran SPP.
-6. Selesaikan pembayaran sandbox.
-7. Pastikan webhook mengubah tagihan menjadi `Lunas`.
+5. Buka menu `Jurnal` dan pastikan jurnal tagihan terbentuk.
+6. Buka pembayaran SPP.
+7. Selesaikan pembayaran sandbox.
+8. Pastikan webhook mengubah tagihan menjadi `Lunas`.
+9. Pastikan jurnal pembayaran terbentuk dan laporan tetap balance.
 
 ## 10. Checklist Produksi
 

@@ -14,6 +14,8 @@ Versi ini adalah fondasi teknis awal. Aplikasi sudah dapat dipakai untuk alur op
 - Rekap tunggakan berdasarkan tagihan belum lunas.
 - Pembayaran melalui Midtrans Snap sandbox.
 - Webhook Midtrans untuk mengubah tagihan menjadi `Lunas`.
+- Fondasi akuntansi double-entry untuk posting tagihan dan pembayaran SPP.
+- Menu jurnal dan laporan dasar dari data jurnal.
 - Pengaturan nama lembaga dan logo.
 - Struktur backend modular per domain.
 
@@ -27,6 +29,8 @@ Versi ini adalah fondasi teknis awal. Aplikasi sudah dapat dipakai untuk alur op
 - `Santri.gs`: data santri dan tagihan santri.
 - `Billing.gs`: dashboard, generate tagihan, dan rekap tunggakan.
 - `Payment.gs`: Midtrans, link pembayaran, transaksi pending, dan webhook.
+- `Accounting.gs`: master akun/dana, posting jurnal, audit log, dan neraca saldo.
+- `Reports.gs`: data laporan akuntansi dasar.
 - `Settings.gs`: pengaturan aplikasi dan upload logo.
 - `Index.html`: frontend Alpine.js + Tailwind CSS.
 - `docs/`: dokumentasi pengguna, teknis, deployment, dan roadmap PAP.

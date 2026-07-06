@@ -118,6 +118,10 @@ function updateTransactionStatus(orderId, status) {
   return false;
 }
 
+function getTransactionByOrderId(orderId) {
+  return getSheetData('transactions').find(transaction => transaction.id_transaksi === orderId);
+}
+
 function markBillingAsPaid(idBilling) {
   const sheet = getSheetOrThrow('billings');
   const rows = sheet.getDataRange().getValues();
@@ -153,6 +157,9 @@ function doPost(e) {
     if (isSuccessfulPayment) {
       markBillingAsPaid(idBilling);
       updateTransactionStatus(orderId, 'SUCCESS');
+      const transaction = getTransactionByOrderId(orderId);
+      const amount = postData.gross_amount || (transaction ? transaction.jumlah_bayar : 0);
+      postPaymentJournal(orderId, idBilling, amount);
     }
 
     return ContentService.createTextOutput('OK').setMimeType(ContentService.MimeType.TEXT);

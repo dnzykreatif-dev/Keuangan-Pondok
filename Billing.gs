@@ -42,6 +42,7 @@ function generateMonthlyBills(month, year, nominal) {
   const existingBills = getSheetData('billings');
 
   const rowsToAppend = [];
+  const billsToPost = [];
 
   santri.forEach(student => {
     const alreadyExists = existingBills.some(billing => (
@@ -51,18 +52,28 @@ function generateMonthlyBills(month, year, nominal) {
     ));
 
     if (!alreadyExists) {
+      const idBilling = generateId('B');
       rowsToAppend.push([
-        generateId('B'),
+        idBilling,
         student.id_santri,
         selectedMonth,
         selectedYear,
         billAmount,
         'Belum Lunas'
       ]);
+      billsToPost.push({
+        id_billing: idBilling,
+        id_santri: student.id_santri,
+        bulan: selectedMonth,
+        tahun: selectedYear,
+        nominal: billAmount,
+        status: 'Belum Lunas'
+      });
     }
   });
 
   appendRows(billingSheet, rowsToAppend);
+  billsToPost.forEach(bill => postBillingJournal(bill));
   return { ok: true, message: `Generated ${rowsToAppend.length} new bills.` };
 }
 

@@ -53,6 +53,12 @@
                 settings: { school_name: '', logo_url: '' },
                 santriList: [],
                 arrearsList: [],
+                journalEntries: [],
+                reportData: {
+                    summary: { totalDebit: 0, totalCredit: 0, isBalanced: true, cashBank: 0, sppReceivable: 0 },
+                    trialBalance: [],
+                    netAssetSummary: []
+                },
                 selectedClassFilter: '',
                 unpaidBills: [],
                 showAddSantriModal: false,
@@ -161,6 +167,44 @@
                             this.notify(err.message, 'error');
                         })
                         .getArrearsRecap();
+                },
+
+                fetchJournals() {
+                    this.loading = true;
+                    google.script.run
+                        .withSuccessHandler(res => {
+                            this.loading = false;
+                            if (res.ok) {
+                                this.journalEntries = res.data;
+                            } else {
+                                this.notify(res.message, 'error');
+                            }
+                            this.refreshIcons();
+                        })
+                        .withFailureHandler(err => {
+                            this.loading = false;
+                            this.notify(err.message, 'error');
+                        })
+                        .getJournalSummaries(50);
+                },
+
+                fetchReports() {
+                    this.loading = true;
+                    google.script.run
+                        .withSuccessHandler(res => {
+                            this.loading = false;
+                            if (res.ok) {
+                                this.reportData = res.data;
+                            } else {
+                                this.notify(res.message, 'error');
+                            }
+                            this.refreshIcons();
+                        })
+                        .withFailureHandler(err => {
+                            this.loading = false;
+                            this.notify(err.message, 'error');
+                        })
+                        .getAccountingReportData();
                 },
 
                 get uniqueClasses() {
@@ -273,6 +317,7 @@
                         .withSuccessHandler(res => {
                             this.loading = false;
                             this.notify(res.message);
+                            this.fetchDashboard();
                         })
                         .withFailureHandler(err => {
                             this.loading = false;
@@ -336,12 +381,17 @@
                 },
 
                 viewTitle() {
-                    const titles = { 'dashboard': 'Overview', 'santri': 'Data Santri', 'billing': 'Tagihan Bulanan', 'arrears': 'Rekap Tunggakan', 'settings': 'Pengaturan' };
+                    const titles = { 'dashboard': 'Overview', 'santri': 'Data Santri', 'billing': 'Tagihan Bulanan', 'arrears': 'Rekap Tunggakan', 'journals': 'Jurnal', 'reports': 'Laporan', 'settings': 'Pengaturan' };
                     return titles[this.view];
                 },
 
                 formatCurrency(val) {
                     return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(val);
+                },
+
+                formatDate(val) {
+                    if (!val) return '-';
+                    return new Intl.DateTimeFormat('id-ID', { day: '2-digit', month: 'short', year: 'numeric' }).format(new Date(val));
                 },
 
                 logout() {
@@ -465,6 +515,14 @@
                 <button @click="view = 'arrears'; fetchArrears(); mobileMenuOpen = false" :class="view === 'arrears' ? 'sidebar-item-active' : 'text-zinc-400 hover:bg-zinc-800/50 hover:text-white'" class="w-full text-left px-4 py-3 rounded-xl flex items-center gap-3 transition-all group">
                     <i data-lucide="clock" class="w-5 h-5"></i>
                     <span class="font-medium">Rekap Tunggakan</span>
+                </button>
+                <button @click="view = 'journals'; fetchJournals(); mobileMenuOpen = false" :class="view === 'journals' ? 'sidebar-item-active' : 'text-zinc-400 hover:bg-zinc-800/50 hover:text-white'" class="w-full text-left px-4 py-3 rounded-xl flex items-center gap-3 transition-all group">
+                    <i data-lucide="book-open" class="w-5 h-5"></i>
+                    <span class="font-medium">Jurnal</span>
+                </button>
+                <button @click="view = 'reports'; fetchReports(); mobileMenuOpen = false" :class="view === 'reports' ? 'sidebar-item-active' : 'text-zinc-400 hover:bg-zinc-800/50 hover:text-white'" class="w-full text-left px-4 py-3 rounded-xl flex items-center gap-3 transition-all group">
+                    <i data-lucide="bar-chart-3" class="w-5 h-5"></i>
+                    <span class="font-medium">Laporan</span>
                 </button>
                 <button @click="view = 'settings'; mobileMenuOpen = false" :class="view === 'settings' ? 'sidebar-item-active' : 'text-zinc-400 hover:bg-zinc-800/50 hover:text-white'" class="w-full text-left px-4 py-3 rounded-xl flex items-center gap-3 transition-all group">
                     <i data-lucide="settings" class="w-5 h-5"></i>
@@ -657,6 +715,139 @@
                                 </template>
                             </tbody>
                         </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Journals View -->
+            <div x-show="view === 'journals'" class="animate-in space-y-4">
+                <div class="flex flex-col sm:flex-row justify-between gap-4 mb-4">
+                    <div>
+                        <h2 class="text-xl font-bold">Jurnal Otomatis</h2>
+                        <p class="text-sm text-zinc-500 mt-1">Posting dari tagihan dan pembayaran SPP</p>
+                    </div>
+                    <button @click="fetchJournals" class="bg-zinc-800 hover:bg-zinc-700 px-4 py-2 rounded-lg text-sm font-semibold flex items-center gap-2">
+                        <i data-lucide="refresh-cw" class="w-4 h-4"></i>
+                        Refresh
+                    </button>
+                </div>
+                <div class="glass rounded-2xl overflow-hidden">
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left">
+                            <thead class="bg-zinc-900/50 text-zinc-400 text-xs uppercase">
+                                <tr>
+                                    <th class="p-4">Tanggal</th>
+                                    <th class="p-4">No. Jurnal</th>
+                                    <th class="p-4">Deskripsi</th>
+                                    <th class="p-4">Sumber</th>
+                                    <th class="p-4 text-right">Debit</th>
+                                    <th class="p-4 text-right">Kredit</th>
+                                    <th class="p-4">Status</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-zinc-800">
+                                <template x-for="j in journalEntries" :key="j.journal_id">
+                                    <tr class="hover:bg-zinc-800/50 transition-colors">
+                                        <td class="p-4 text-zinc-400 whitespace-nowrap" x-text="formatDate(j.date)"></td>
+                                        <td class="p-4 text-xs text-zinc-500" x-text="j.journal_id"></td>
+                                        <td class="p-4 font-semibold" x-text="j.description"></td>
+                                        <td class="p-4 text-zinc-400" x-text="j.source_type + ' / ' + j.source_id"></td>
+                                        <td class="p-4 text-right" x-text="formatCurrency(j.total_debit)"></td>
+                                        <td class="p-4 text-right" x-text="formatCurrency(j.total_credit)"></td>
+                                        <td class="p-4">
+                                            <span class="px-2 py-1 rounded text-xs font-semibold" :class="j.is_balance ? 'bg-success/20 text-success' : 'bg-danger/20 text-danger'" x-text="j.is_balance ? 'Balance' : 'Tidak Balance'"></span>
+                                        </td>
+                                    </tr>
+                                </template>
+                                <tr x-show="journalEntries.length === 0">
+                                    <td colspan="7" class="p-6 text-center text-sm text-zinc-500">Belum ada jurnal.</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Reports View -->
+            <div x-show="view === 'reports'" class="animate-in space-y-6">
+                <div class="flex flex-col sm:flex-row justify-between gap-4">
+                    <div>
+                        <h2 class="text-xl font-bold">Laporan Dasar</h2>
+                        <p class="text-sm text-zinc-500 mt-1">Ringkasan awal dari jurnal double-entry</p>
+                    </div>
+                    <button @click="fetchReports" class="bg-zinc-800 hover:bg-zinc-700 px-4 py-2 rounded-lg text-sm font-semibold flex items-center gap-2">
+                        <i data-lucide="refresh-cw" class="w-4 h-4"></i>
+                        Refresh
+                    </button>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-4">
+                    <div class="glass p-5 rounded-2xl border-l-4 border-l-success">
+                        <p class="text-xs uppercase tracking-widest text-zinc-500 font-bold">Kas/Bank</p>
+                        <h3 class="text-2xl font-bold mt-3" x-text="formatCurrency(reportData.summary.cashBank)"></h3>
+                    </div>
+                    <div class="glass p-5 rounded-2xl border-l-4 border-l-danger">
+                        <p class="text-xs uppercase tracking-widest text-zinc-500 font-bold">Piutang SPP</p>
+                        <h3 class="text-2xl font-bold mt-3" x-text="formatCurrency(reportData.summary.sppReceivable)"></h3>
+                    </div>
+                    <div class="glass p-5 rounded-2xl border-l-4 border-l-primary">
+                        <p class="text-xs uppercase tracking-widest text-zinc-500 font-bold">Total Debit</p>
+                        <h3 class="text-2xl font-bold mt-3" x-text="formatCurrency(reportData.summary.totalDebit)"></h3>
+                    </div>
+                    <div class="glass p-5 rounded-2xl border-l-4 border-l-primary">
+                        <p class="text-xs uppercase tracking-widest text-zinc-500 font-bold">Total Kredit</p>
+                        <h3 class="text-2xl font-bold mt-3" x-text="formatCurrency(reportData.summary.totalCredit)"></h3>
+                    </div>
+                    <div class="glass p-5 rounded-2xl border-l-4" :class="reportData.summary.isBalanced ? 'border-l-success' : 'border-l-danger'">
+                        <p class="text-xs uppercase tracking-widest text-zinc-500 font-bold">Balance</p>
+                        <h3 class="text-2xl font-bold mt-3" x-text="reportData.summary.isBalanced ? 'Balance' : 'Cek Jurnal'"></h3>
+                    </div>
+                </div>
+                <div class="grid grid-cols-1 xl:grid-cols-2 gap-6">
+                    <div class="glass rounded-2xl overflow-hidden">
+                        <div class="p-5 border-b border-zinc-800">
+                            <h3 class="font-bold">Neraca Saldo</h3>
+                        </div>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left">
+                                <thead class="bg-zinc-900/50 text-zinc-400 text-xs uppercase">
+                                    <tr>
+                                        <th class="p-4">Akun</th>
+                                        <th class="p-4 text-right">Debit</th>
+                                        <th class="p-4 text-right">Kredit</th>
+                                        <th class="p-4 text-right">Saldo</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-zinc-800">
+                                    <template x-for="row in reportData.trialBalance" :key="row.account_id">
+                                        <tr class="hover:bg-zinc-800/50 transition-colors">
+                                            <td class="p-4">
+                                                <p class="font-semibold" x-text="row.code + ' - ' + row.name"></p>
+                                                <p class="text-xs text-zinc-500" x-text="row.type"></p>
+                                            </td>
+                                            <td class="p-4 text-right" x-text="formatCurrency(row.debit)"></td>
+                                            <td class="p-4 text-right" x-text="formatCurrency(row.credit)"></td>
+                                            <td class="p-4 text-right font-semibold" x-text="formatCurrency(row.balance)"></td>
+                                        </tr>
+                                    </template>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <div class="glass rounded-2xl overflow-hidden">
+                        <div class="p-5 border-b border-zinc-800">
+                            <h3 class="font-bold">Ringkasan Aset Neto</h3>
+                        </div>
+                        <div class="divide-y divide-zinc-800">
+                            <template x-for="fund in reportData.netAssetSummary" :key="fund.fund_id">
+                                <div class="p-5 flex items-center justify-between gap-4">
+                                    <div>
+                                        <p class="font-semibold" x-text="fund.name"></p>
+                                        <p class="text-xs text-zinc-500" x-text="fund.restriction_type"></p>
+                                    </div>
+                                    <p class="font-bold" x-text="formatCurrency(fund.balance)"></p>
+                                </div>
+                            </template>
+                        </div>
                     </div>
                 </div>
             </div>
