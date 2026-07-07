@@ -1,5 +1,5 @@
 const APP_CONFIG = Object.freeze({
-  SPREADSHEET_ID: '1GOpHDvbbd0tsjfGK0aMyrHgp4wjtVXOCkTu9mZx8FE8',
+  SPREADSHEET_ID: '12Mmvz6VehTFlXulxAH5GRGAksheB3u4JSqO2Ltx7iYA',
   MIDTRANS_SERVER_KEY: 'YOUR_MIDTRANS_SERVER_KEY',
   MIDTRANS_CLIENT_KEY: 'YOUR_MIDTRANS_CLIENT_KEY',
   MIDTRANS_SNAP_URL: 'https://app.sandbox.midtrans.com/snap/v1/transactions',
