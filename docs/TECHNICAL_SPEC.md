@@ -1,181 +1,91 @@
-# Technical Specification
+# Technical Spec
 
-## 1. Arsitektur
+## Arsitektur
 
-Aplikasi menggunakan Google Apps Script sebagai backend dan Google Spreadsheet sebagai database sederhana. Frontend berada di `Index.html` dengan Alpine.js untuk state UI, Tailwind CSS untuk styling, Lucide untuk ikon, dan Midtrans Snap untuk pembayaran.
+Aplikasi memakai Google Apps Script sebagai backend, Google Spreadsheet sebagai penyimpanan data, dan `Index.html` sebagai frontend Alpine.js. Semua data operasional dan akuntansi disimpan di sheet agar bendahara tetap bisa audit manual jika diperlukan.
 
-Alur umum:
+## Modul Backend
 
-1. User membuka Web App melalui `doGet()`.
-2. Frontend memanggil backend memakai `google.script.run`.
-3. Backend membaca/menulis data ke spreadsheet.
-4. Midtrans mengirim webhook ke `doPost()` setelah status pembayaran berubah.
+- `Billing.gs`: membuat tagihan, rekap tunggakan, dan dashboard.
+- `Payment.gs`: membuat payment order QRIS, menjalankan adapter provider, menerima callback, mencatat event, dan melakukan rekonsiliasi.
+- `Accounting.gs`: memvalidasi jurnal balance, posting double-entry, menyimpan audit log, dan menyediakan neraca saldo.
+- `Reports.gs`: menyusun data laporan PAP dasar dari jurnal.
 
-## 2. Modul Backend
+## Sheet Utama
 
-- `Code.gs`: entrypoint Web App.
-- `Config.gs`: konfigurasi global dan definisi header sheet.
-- `Utils.gs`: utilitas spreadsheet, normalisasi input, ID generator, dan Script Properties.
-- `Setup.gs`: inisialisasi sheet dan data awal.
-- `Auth.gs`: autentikasi user.
-- `Santri.gs`: CRUD ringan santri dan tagihan belum lunas.
-- `Billing.gs`: dashboard, tagihan bulanan, dan rekap tunggakan.
-- `Payment.gs`: Midtrans Snap, transaksi pending, link pembayaran, dan webhook.
-- `Accounting.gs`: master akun, dana, posting jurnal double-entry, audit log, dan neraca saldo.
-- `Reports.gs`: laporan dasar dari data jurnal.
-- `Settings.gs`: profil lembaga dan upload logo.
+- `users`: akun login.
+- `santri`: master santri.
+- `billings`: tagihan dengan dimensi `billing_type`, `fund_id`, `unit_id`, dan `program_id`.
+- `transactions`: catatan transaksi legacy untuk dashboard.
+- `payment_providers`: daftar provider QRIS.
+- `payment_orders`: order pembayaran per tagihan.
+- `payment_events`: callback dan aktivitas payment order.
+- `reconciliation_logs`: log rekonsiliasi payment ke billing dan jurnal.
+- `accounts`: chart of accounts pesantren.
+- `funds`: dana tidak terikat, terikat sementara, dan terikat permanen.
+- `units`: unit pesantren dan unit usaha.
+- `programs`: program umum, beasiswa, wakaf, dan program lain.
+- `journal_entries`: header jurnal.
+- `journal_lines`: baris debit/kredit.
+- `audit_logs`: jejak aktivitas penting.
 
-## 3. Struktur Sheet Saat Ini
+## Payment Adapter
 
-### `users`
+Fungsi publik utama:
 
-| Kolom | Fungsi |
-| --- | --- |
-| `username` | Username login |
-| `password_hash` | Hash SHA-256 password |
-| `role` | Role user |
+- `createPaymentOrder(payment)`: membuat order QRIS dari tagihan.
+- `generatePaymentLink(id_santri)`: membuat order untuk tagihan tertua yang belum lunas.
+- `handlePaymentCallback(payload)`: memproses callback provider.
+- `checkPaymentStatus(orderId)`: melihat status order.
+- `getPaymentOrders(limit)`: data riwayat payment order untuk UI.
 
-### `santri`
+Adapter wajib menyediakan:
 
-| Kolom | Fungsi |
-| --- | --- |
-| `id_santri` | ID unik santri |
-| `nama` | Nama santri |
-| `kelas` | Kelas |
-| `status` | Status, contoh `Aktif` |
-| `kontak_ortu` | Nomor WhatsApp wali |
+- `createInvoice(order, bill, student)`
+- `handleCallback` melalui `normalizeCallback(payload)`
+- `checkStatus` jika provider menyediakan endpoint status
+- `verifySignature(payload)`
 
-### `billings`
+Default provider adalah `MOCK_QRIS`. Adapter `DUITKU` tersedia sebagai fondasi, tetapi membutuhkan Script Properties sebelum dipakai.
 
-| Kolom | Fungsi |
-| --- | --- |
-| `id_billing` | ID tagihan |
-| `id_santri` | Relasi ke santri |
-| `bulan` | Bulan tagihan |
-| `tahun` | Tahun tagihan |
-| `nominal` | Nilai tagihan |
-| `status` | `Belum Lunas` atau `Lunas` |
+## Flow QRIS
 
-### `transactions`
+1. Bendahara memilih tagihan.
+2. Frontend memanggil `createPaymentOrder()`.
+3. Backend membuat record `payment_orders` dan `transactions`.
+4. Adapter membuat invoice/QRIS atau mock QRIS.
+5. Provider mengirim callback ke `doPost(e)`.
+6. Callback sukses menandai order `PAID`, billing `Lunas`, transaction `PAID`, dan posting jurnal kas.
+7. Callback berulang tetap aman karena jurnal memakai idempotency `source_type` + `source_id`.
 
-| Kolom | Fungsi |
-| --- | --- |
-| `id_transaksi` | ID transaksi, untuk Midtrans berisi `order_id` |
-| `id_santri` | Relasi ke santri |
-| `id_billing` | Relasi ke tagihan |
-| `tanggal` | Tanggal transaksi dibuat |
-| `jumlah_bayar` | Nominal pembayaran |
-| `metode` | Metode pembayaran |
-| `status` | `PENDING`, `SUCCESS`, atau status lain |
-| `penerima` | User/system pembuat transaksi |
+## Akuntansi
 
-### `settings`
+Semua jurnal wajib balance. Akun yang dipakai harus aktif.
 
-| Kolom | Fungsi |
-| --- | --- |
-| `key` | Nama pengaturan |
-| `value` | Nilai pengaturan |
+Posting otomatis:
 
-### `accounts`
+- Tagihan SPP: debit `Piutang SPP`, kredit `Pendapatan SPP`.
+- Pembayaran QRIS: debit `Kas/Bank`, kredit `Piutang SPP`.
+- Donasi: debit `Kas/Bank`, kredit `Penerimaan Infaq/Donasi`.
+- Wakaf: debit aset/kas, kredit `Penerimaan Wakaf`.
+- Aset: debit `Aset Tetap`, kredit `Kas/Bank`.
+- Penyusutan: debit `Beban Penyusutan`, kredit `Akumulasi Penyusutan`.
+- Persediaan: debit `Persediaan`, kredit `Kas/Bank`.
+- Bisaroh: debit `Beban Bisaroh/Gaji`, kredit `Kas/Bank`.
 
-| Kolom | Fungsi |
-| --- | --- |
-| `account_id` | ID akun |
-| `code` | Kode akun |
-| `name` | Nama akun |
-| `type` | Tipe akun |
-| `report_category` | Kategori laporan |
-| `normal_balance` | Saldo normal |
-| `is_active` | Status aktif |
+## Laporan
 
-### `funds`
+`getAccountingReportData()` mengembalikan:
 
-| Kolom | Fungsi |
-| --- | --- |
-| `fund_id` | ID dana |
-| `name` | Nama dana |
-| `restriction_type` | Tidak terikat, terikat sementara, atau terikat permanen |
-| `is_active` | Status aktif |
+- Neraca saldo.
+- Ringkasan posisi keuangan.
+- Ringkasan aset neto per dana.
+- Arus kas operasi, investasi, dan pendanaan.
+- CaLK dasar berupa kebijakan pencatatan, jumlah akun, dana aktif, jurnal posted, dan akun material.
 
-### `journal_entries`
+## Batasan Apps Script
 
-| Kolom | Fungsi |
-| --- | --- |
-| `journal_id` | ID jurnal |
-| `date` | Tanggal jurnal |
-| `description` | Deskripsi |
-| `source_type` | Sumber, contoh `billing` atau `payment` |
-| `source_id` | ID sumber |
-| `fund_id` | Dana terkait |
-| `status` | Status jurnal |
-| `created_at` | Waktu dibuat |
-| `created_by` | Pembuat |
-
-### `journal_lines`
-
-| Kolom | Fungsi |
-| --- | --- |
-| `line_id` | ID baris jurnal |
-| `journal_id` | Relasi ke jurnal |
-| `account_id` | Relasi ke akun |
-| `account_code` | Kode akun saat posting |
-| `account_name` | Nama akun saat posting |
-| `debit` | Nilai debit |
-| `credit` | Nilai kredit |
-| `memo` | Catatan baris |
-
-## 4. Konfigurasi
-
-Konfigurasi utama berada di `Config.gs`.
-
-Untuk data sensitif, gunakan Script Properties:
-
-- `MIDTRANS_SERVER_KEY`
-- `MIDTRANS_CLIENT_KEY`
-
-Jika Script Properties kosong, aplikasi memakai fallback dari `APP_CONFIG`. Fallback masih berupa placeholder dan tidak boleh dipakai untuk produksi.
-
-## 5. Integrasi Midtrans
-
-Endpoint saat ini:
-
-```text
-https://app.sandbox.midtrans.com/snap/v1/transactions
-```
-
-Alur pembayaran:
-
-1. Frontend memanggil `createMidtransTransaction(payment)`.
-2. Backend mengambil tagihan dan santri.
-3. Backend membuat payload Snap.
-4. Midtrans mengembalikan `token` dan `redirect_url`.
-5. Backend menyimpan transaksi `PENDING`.
-6. Frontend membuka popup Snap.
-7. Midtrans memanggil `doPost(e)`.
-8. Jika status `settlement`, atau `capture` dengan `fraud_status=accept`, sistem menandai tagihan `Lunas` dan transaksi `SUCCESS`.
-
-## 6. Batasan Teknis Spreadsheet
-
-- Spreadsheet cocok untuk skala kecil sampai menengah.
-- Hindari operasi baris satu per satu dalam jumlah besar.
-- Untuk data besar, gunakan batch read/write seperti `getValues()` dan `setValues()`.
-- Tidak ada constraint database native, sehingga validasi wajib dilakukan di Apps Script.
-- Audit log perlu ditambahkan sebelum aplikasi dipakai multi-user secara serius.
-
-## 7. Risiko Teknis
-
-- Login belum memakai sesi server-side.
-- Role belum dipakai untuk membatasi akses fungsi backend.
-- Belum ada locking untuk mencegah race condition saat transaksi bersamaan.
-- Belum ada migrasi schema formal.
-- Belum ada test otomatis karena Apps Script berjalan di runtime Google.
-
-## 8. Arah Teknis PAP
-
-Pengembangan PAP menambah lapisan akuntansi double-entry tanpa membuang modul SPP yang sudah ada. Modul SPP menjadi salah satu sumber transaksi yang melakukan posting otomatis ke jurnal.
-
-Posting otomatis saat ini:
-
-- Saat tagihan SPP dibuat: debit `Piutang SPP`, kredit `Pendapatan SPP`.
-- Saat pembayaran Midtrans sukses: debit `Kas/Bank`, kredit `Piutang SPP`.
-- Setiap posting menyimpan `source_type` dan `source_id` untuk mencegah jurnal dobel.
+- Runtime per eksekusi terbatas, jadi proses batch besar perlu dipotong.
+- Callback provider harus ringan dan idempotent.
+- Secret provider disimpan di Script Properties.
+- Spreadsheet cocok untuk fase awal-menengah, tetapi bukan database transaksi skala besar.

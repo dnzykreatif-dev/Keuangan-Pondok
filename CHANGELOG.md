@@ -1,67 +1,27 @@
 # Changelog
 
+## 0.3.0 - QRIS Adapter and PAP Expansion
+
+- Menghapus integrasi pembayaran lama dan menggantinya dengan payment order QRIS berbasis adapter provider.
+- Menambahkan provider default `MOCK_QRIS` untuk simulasi tanpa akun PJSP.
+- Menambahkan fondasi adapter `DUITKU` yang bisa diaktifkan lewat Script Properties.
+- Menambahkan sheet `payment_providers`, `payment_orders`, `payment_events`, dan `reconciliation_logs`.
+- Menambahkan dimensi `units` dan `programs`.
+- Memperluas chart of accounts pesantren untuk kas, piutang, persediaan, aset tetap, wakaf, utang, pendapatan, beban, dan aset neto.
+- Menambahkan fungsi posting jurnal untuk kas masuk/keluar, donasi, wakaf, aset, penyusutan, persediaan, dan bisaroh.
+- Menambahkan data laporan posisi keuangan, arus kas, dan CaLK dasar.
+- Menambahkan menu `Pembayaran QRIS` di frontend.
+- Memperbarui README dan dokumentasi agar selaras dengan arah QRIS dan sistem keuangan pesantren.
+
 ## 0.2.0 - PAP Accounting Foundation
 
-### Added
+- Menambahkan sheet akuntansi: `accounts`, `funds`, `fiscal_periods`, `journal_entries`, `journal_lines`, dan `audit_logs`.
+- Menambahkan posting jurnal double-entry untuk tagihan dan pembayaran SPP.
+- Menambahkan menu jurnal dan laporan dasar.
+- Menambahkan seed akun dan dana default.
 
-- Sheet akuntansi: `accounts`, `funds`, `fiscal_periods`, `journal_entries`, `journal_lines`, dan `audit_logs`.
-- Modul `Accounting.gs` untuk seed akun/dana, posting jurnal double-entry, audit log, dan neraca saldo.
-- Modul `Reports.gs` untuk laporan dasar dari jurnal.
-- Posting otomatis tagihan SPP: debit `Piutang SPP`, kredit `Pendapatan SPP`.
-- Posting otomatis pembayaran sukses: debit `Kas/Bank`, kredit `Piutang SPP`.
-- Menu `Jurnal` dan `Laporan` di dashboard.
+## 0.1.0 - Modular App Foundation
 
-### Changed
-
-- `setupDatabase()` sekarang ikut menyiapkan master akun, dana, dan periode fiskal.
-- `generateMonthlyBills()` membuat jurnal piutang untuk tagihan baru.
-- Webhook Midtrans membuat jurnal kas saat pembayaran sukses.
-
-### Safeguards
-
-- Posting jurnal wajib balance.
-- Posting otomatis idempotent berdasarkan `source_type` dan `source_id`.
-- Template akun dan dana hanya dibuat jika sheet masih kosong.
-
-## 0.1.0 - Initial Modular Foundation
-
-### Added
-
-- Struktur backend modular untuk Apps Script:
-  - `Code.gs`
-  - `Config.gs`
-  - `Utils.gs`
-  - `Setup.gs`
-  - `Auth.gs`
-  - `Santri.gs`
-  - `Billing.gs`
-  - `Payment.gs`
-  - `Settings.gs`
-- Dokumentasi produk:
-  - `README.md`
-  - `docs/MANUAL_BOOK.md`
-  - `docs/TECHNICAL_SPEC.md`
-  - `docs/ROADMAP_PAP.md`
-  - `docs/DEPLOYMENT_GUIDE.md`
-- Konfigurasi Midtrans melalui Script Properties.
-- Fungsi kompatibilitas `processPayment()` untuk alur lama.
-
-### Changed
-
-- `Index.html` dirapikan agar hanya memiliki satu fungsi `app()`.
-- Flow pembayaran frontend diarahkan ke `createMidtransTransaction()`.
-- Struktur sheet `transactions` memakai kolom `status` untuk status pembayaran.
-- Perhitungan dashboard hanya menghitung transaksi dengan status sukses sebagai pendapatan.
-
-### Fixed
-
-- Menghapus duplikasi state frontend yang sebelumnya membuat behavior saling menimpa.
-- Menambahkan `generatePaymentLink()` agar tombol kirim link WhatsApp punya backend yang sesuai.
-- Webhook Midtrans sekarang menerima `settlement` sebagai pembayaran sukses.
-
-### Known Limitations
-
-- Autentikasi belum memakai sesi server-side.
-- Belum ada role-based access control.
-- Belum ada laporan PAP double-entry.
-- Endpoint Midtrans masih sandbox.
+- Memecah kode Apps Script menjadi modul backend.
+- Menambahkan login, data santri, tagihan, rekap tunggakan, pengaturan profil, dan dashboard awal.
+- Menambahkan dokumentasi awal dan setup clasp.

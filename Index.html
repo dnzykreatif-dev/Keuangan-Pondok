@@ -3,12 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pembayaran SPP Dashboard</title>
+    <title>Keuangan Pondok</title>
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
-    <!-- Midtrans Snap JS -->
-    <script src="https://app.sandbox.midtrans.com/snap/snap.js" data-client-key="<?= midtransClientKey ?>"></script>
     <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
     <style>
         body { font-family: 'IBM Plex Sans', sans-serif; background-color: #09090b; color: #fafafa; -webkit-font-smoothing: antialiased; }
@@ -54,10 +52,14 @@
                 santriList: [],
                 arrearsList: [],
                 journalEntries: [],
+                paymentOrders: [],
                 reportData: {
                     summary: { totalDebit: 0, totalCredit: 0, isBalanced: true, cashBank: 0, sppReceivable: 0 },
                     trialBalance: [],
-                    netAssetSummary: []
+                    netAssetSummary: [],
+                    financialPosition: { totalAssets: 0, totalLiabilities: 0, totalNetAssets: 0 },
+                    cashFlow: { operasi: 0, investasi: 0, pendanaan: 0, total: 0 },
+                    notes: { materialAccounts: [] }
                 },
                 selectedClassFilter: '',
                 unpaidBills: [],
@@ -207,6 +209,25 @@
                         .getAccountingReportData();
                 },
 
+                fetchPaymentOrders() {
+                    this.loading = true;
+                    google.script.run
+                        .withSuccessHandler(res => {
+                            this.loading = false;
+                            if (res.ok) {
+                                this.paymentOrders = res.data;
+                            } else {
+                                this.notify(res.message, 'error');
+                            }
+                            this.refreshIcons();
+                        })
+                        .withFailureHandler(err => {
+                            this.loading = false;
+                            this.notify(err.message, 'error');
+                        })
+                        .getPaymentOrders(50);
+                },
+
                 get uniqueClasses() {
                     const classes = this.arrearsList.map(a => a.kelas);
                     return [...new Set(classes)].sort();
@@ -275,30 +296,11 @@
                         .withSuccessHandler(res => {
                             this.loading = false;
                             if (res.ok) {
-                                if (window.snap && typeof window.snap.pay === 'function' && res.token) {
-                                    window.snap.pay(res.token, {
-                                        onSuccess: (result) => {
-                                            this.notify("Pembayaran Berhasil!");
-                                            this.showPaymentModal = false;
-                                            this.fetchDashboard();
-                                        },
-                                        onPending: () => {
-                                            this.notify("Menunggu pembayaran...");
-                                            this.showPaymentModal = false;
-                                        },
-                                        onError: () => {
-                                            this.notify("Pembayaran gagal", "error");
-                                        },
-                                        onClose: () => {
-                                            this.notify("Pembayaran dibatalkan");
-                                        }
-                                    });
-                                } else if (res.redirect_url) {
-                                    window.open(res.redirect_url, '_blank');
-                                    this.notify("Link pembayaran berhasil dibuat");
-                                } else {
-                                    this.notify("Token pembayaran tidak tersedia", "error");
-                                }
+                                if (res.payment_url) window.open(res.payment_url, '_blank');
+                                this.notify(res.payment_url ? "Payment order QRIS dibuat" : "QRIS mock dibuat. Cek menu Pembayaran QRIS.");
+                                this.showPaymentModal = false;
+                                this.fetchDashboard();
+                                this.fetchPaymentOrders();
                             } else {
                                 this.notify(res.message, 'error');
                             }
@@ -307,7 +309,7 @@
                             this.loading = false;
                             this.notify(err.message, 'error');
                         })
-                        .createMidtransTransaction(this.paymentData);
+                        .createPaymentOrder(this.paymentData);
                 },
 
                 handleGenerateBills() {
@@ -331,8 +333,9 @@
                     google.script.run
                         .withSuccessHandler(res => {
                             this.loading = false;
+                            if (!res.ok) return this.notify(res.message, 'error');
                             const paymentLink = res.redirect_url || res.link;
-                            const msg = `Assalamu'alaikum Wr. Wb.\n\nMohon Bapak/Ibu melakukan pembayaran SPP an. *${santri.nama}* melalui link resmi berikut:\n\n${paymentLink}\n\nTerima kasih.`;
+                            const msg = `Assalamu'alaikum Wr. Wb.\n\nMohon Bapak/Ibu melakukan pembayaran tagihan an. *${santri.nama}* melalui QRIS/link resmi berikut:\n\n${paymentLink || res.qr_string}\n\nTerima kasih.`;
                             const waUrl = `https://wa.me/${santri.kontak_ortu}?text=${encodeURIComponent(msg)}`;
                             window.open(waUrl, '_blank');
                             this.notify("Link pembayaran dikirim ke WA");
@@ -381,7 +384,7 @@
                 },
 
                 viewTitle() {
-                    const titles = { 'dashboard': 'Overview', 'santri': 'Data Santri', 'billing': 'Tagihan Bulanan', 'arrears': 'Rekap Tunggakan', 'journals': 'Jurnal', 'reports': 'Laporan', 'settings': 'Pengaturan' };
+                    const titles = { 'dashboard': 'Overview', 'santri': 'Data Santri', 'billing': 'Tagihan', 'arrears': 'Rekap Tunggakan', 'payments': 'Pembayaran QRIS', 'journals': 'Jurnal', 'reports': 'Laporan', 'settings': 'Pengaturan' };
                     return titles[this.view];
                 },
 
@@ -478,7 +481,7 @@
     <div x-show="isLoggedIn" x-cloak class="flex flex-col md:flex-row min-h-screen bg-surface">
         <!-- Mobile Header -->
         <div class="md:hidden glass border-b border-zinc-800 p-4 flex justify-between items-center sticky top-0 z-40">
-            <h2 class="text-lg font-bold text-primary">SPP Manager</h2>
+            <h2 class="text-lg font-bold text-primary">Keuangan Pondok</h2>
             <button @click="mobileMenuOpen = !mobileMenuOpen" class="p-2 hover:bg-zinc-800 rounded-lg">
                 <i data-lucide="menu" class="w-6 h-6"></i>
             </button>
@@ -496,7 +499,7 @@
                         <i data-lucide="graduation-cap" class="w-6 h-6 text-white"></i>
                     </div>
                 </template>
-                <h2 class="text-xl font-bold tracking-tight truncate" x-text="settings.school_name || 'SPP Manager'"></h2>
+                <h2 class="text-xl font-bold tracking-tight truncate" x-text="settings.school_name || 'Keuangan Pondok'"></h2>
             </div>
             
             <nav class="space-y-1.5 flex-1">
@@ -515,6 +518,10 @@
                 <button @click="view = 'arrears'; fetchArrears(); mobileMenuOpen = false" :class="view === 'arrears' ? 'sidebar-item-active' : 'text-zinc-400 hover:bg-zinc-800/50 hover:text-white'" class="w-full text-left px-4 py-3 rounded-xl flex items-center gap-3 transition-all group">
                     <i data-lucide="clock" class="w-5 h-5"></i>
                     <span class="font-medium">Rekap Tunggakan</span>
+                </button>
+                <button @click="view = 'payments'; fetchPaymentOrders(); mobileMenuOpen = false" :class="view === 'payments' ? 'sidebar-item-active' : 'text-zinc-400 hover:bg-zinc-800/50 hover:text-white'" class="w-full text-left px-4 py-3 rounded-xl flex items-center gap-3 transition-all group">
+                    <i data-lucide="qr-code" class="w-5 h-5"></i>
+                    <span class="font-medium">Pembayaran QRIS</span>
                 </button>
                 <button @click="view = 'journals'; fetchJournals(); mobileMenuOpen = false" :class="view === 'journals' ? 'sidebar-item-active' : 'text-zinc-400 hover:bg-zinc-800/50 hover:text-white'" class="w-full text-left px-4 py-3 rounded-xl flex items-center gap-3 transition-all group">
                     <i data-lucide="book-open" class="w-5 h-5"></i>
@@ -628,7 +635,7 @@
                                             <span class="px-2 py-1 rounded text-xs" :class="s.status === 'Aktif' ? 'bg-success/20 text-success' : 'bg-zinc-800 text-zinc-400'" x-text="s.status"></span>
                                         </td>
                                         <td class="p-4 flex gap-3">
-                                            <button @click="openPaymentModal(s)" class="text-primary hover:underline text-sm font-semibold">Bayar SPP</button>
+                                            <button @click="openPaymentModal(s)" class="text-primary hover:underline text-sm font-semibold">Bayar QRIS</button>
                                             <button @click="sendPaymentLink(s)" class="text-success hover:underline text-sm font-semibold">Kirim Link</button>
                                         </td>
                                     </tr>
@@ -719,12 +726,64 @@
                 </div>
             </div>
 
+            <!-- Payments View -->
+            <div x-show="view === 'payments'" class="animate-in space-y-4">
+                <div class="flex flex-col sm:flex-row justify-between gap-4 mb-4">
+                    <div>
+                        <h2 class="text-xl font-bold">Pembayaran QRIS</h2>
+                        <p class="text-sm text-zinc-500 mt-1">Payment order dinamis dari tagihan pesantren</p>
+                    </div>
+                    <button @click="fetchPaymentOrders" class="bg-zinc-800 hover:bg-zinc-700 px-4 py-2 rounded-lg text-sm font-semibold flex items-center gap-2">
+                        <i data-lucide="refresh-cw" class="w-4 h-4"></i>
+                        Refresh
+                    </button>
+                </div>
+                <div class="glass rounded-2xl overflow-hidden">
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left">
+                            <thead class="bg-zinc-900/50 text-zinc-400 text-xs uppercase">
+                                <tr>
+                                    <th class="p-4">Tanggal</th>
+                                    <th class="p-4">Order</th>
+                                    <th class="p-4">Provider</th>
+                                    <th class="p-4">Sumber</th>
+                                    <th class="p-4 text-right">Nominal</th>
+                                    <th class="p-4">Status</th>
+                                    <th class="p-4">Link/QR</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-zinc-800">
+                                <template x-for="order in paymentOrders" :key="order.order_id">
+                                    <tr class="hover:bg-zinc-800/50 transition-colors">
+                                        <td class="p-4 text-zinc-400 whitespace-nowrap" x-text="formatDate(order.created_at)"></td>
+                                        <td class="p-4 text-xs text-zinc-500" x-text="order.order_id"></td>
+                                        <td class="p-4 font-semibold" x-text="order.provider_id"></td>
+                                        <td class="p-4 text-zinc-400" x-text="order.source_type + ' / ' + order.source_id"></td>
+                                        <td class="p-4 text-right" x-text="formatCurrency(order.amount)"></td>
+                                        <td class="p-4">
+                                            <span class="px-2 py-1 rounded text-xs font-semibold" :class="String(order.status).toUpperCase() === 'PAID' ? 'bg-success/20 text-success' : 'bg-primary/20 text-primary'" x-text="order.status"></span>
+                                        </td>
+                                        <td class="p-4">
+                                            <a x-show="order.payment_url" :href="order.payment_url" target="_blank" class="text-primary hover:underline text-sm font-semibold">Buka</a>
+                                            <span x-show="!order.payment_url" class="text-xs text-zinc-500" x-text="order.qr_string || '-'"></span>
+                                        </td>
+                                    </tr>
+                                </template>
+                                <tr x-show="paymentOrders.length === 0">
+                                    <td colspan="7" class="p-6 text-center text-sm text-zinc-500">Belum ada payment order.</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
             <!-- Journals View -->
             <div x-show="view === 'journals'" class="animate-in space-y-4">
                 <div class="flex flex-col sm:flex-row justify-between gap-4 mb-4">
                     <div>
                         <h2 class="text-xl font-bold">Jurnal Otomatis</h2>
-                        <p class="text-sm text-zinc-500 mt-1">Posting dari tagihan dan pembayaran SPP</p>
+                        <p class="text-sm text-zinc-500 mt-1">Posting dari tagihan, QRIS, kas, wakaf, aset, persediaan, dan bisaroh</p>
                     </div>
                     <button @click="fetchJournals" class="bg-zinc-800 hover:bg-zinc-700 px-4 py-2 rounded-lg text-sm font-semibold flex items-center gap-2">
                         <i data-lucide="refresh-cw" class="w-4 h-4"></i>
@@ -773,7 +832,7 @@
                 <div class="flex flex-col sm:flex-row justify-between gap-4">
                     <div>
                         <h2 class="text-xl font-bold">Laporan Dasar</h2>
-                        <p class="text-sm text-zinc-500 mt-1">Ringkasan awal dari jurnal double-entry</p>
+                        <p class="text-sm text-zinc-500 mt-1">Ringkasan awal menuju empat laporan PAP</p>
                     </div>
                     <button @click="fetchReports" class="bg-zinc-800 hover:bg-zinc-700 px-4 py-2 rounded-lg text-sm font-semibold flex items-center gap-2">
                         <i data-lucide="refresh-cw" class="w-4 h-4"></i>
@@ -800,6 +859,24 @@
                     <div class="glass p-5 rounded-2xl border-l-4" :class="reportData.summary.isBalanced ? 'border-l-success' : 'border-l-danger'">
                         <p class="text-xs uppercase tracking-widest text-zinc-500 font-bold">Balance</p>
                         <h3 class="text-2xl font-bold mt-3" x-text="reportData.summary.isBalanced ? 'Balance' : 'Cek Jurnal'"></h3>
+                    </div>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+                    <div class="glass p-5 rounded-2xl">
+                        <p class="text-xs uppercase tracking-widest text-zinc-500 font-bold">Total Aset</p>
+                        <h3 class="text-2xl font-bold mt-3" x-text="formatCurrency(reportData.financialPosition.totalAssets)"></h3>
+                    </div>
+                    <div class="glass p-5 rounded-2xl">
+                        <p class="text-xs uppercase tracking-widest text-zinc-500 font-bold">Total Liabilitas</p>
+                        <h3 class="text-2xl font-bold mt-3" x-text="formatCurrency(reportData.financialPosition.totalLiabilities)"></h3>
+                    </div>
+                    <div class="glass p-5 rounded-2xl">
+                        <p class="text-xs uppercase tracking-widest text-zinc-500 font-bold">Total Aset Neto</p>
+                        <h3 class="text-2xl font-bold mt-3" x-text="formatCurrency(reportData.financialPosition.totalNetAssets)"></h3>
+                    </div>
+                    <div class="glass p-5 rounded-2xl">
+                        <p class="text-xs uppercase tracking-widest text-zinc-500 font-bold">Arus Kas Bersih</p>
+                        <h3 class="text-2xl font-bold mt-3" x-text="formatCurrency(reportData.cashFlow.total)"></h3>
                     </div>
                 </div>
                 <div class="grid grid-cols-1 xl:grid-cols-2 gap-6">
@@ -850,6 +927,29 @@
                         </div>
                     </div>
                 </div>
+                <div class="grid grid-cols-1 xl:grid-cols-2 gap-6">
+                    <div class="glass rounded-2xl overflow-hidden">
+                        <div class="p-5 border-b border-zinc-800">
+                            <h3 class="font-bold">Laporan Arus Kas</h3>
+                        </div>
+                        <div class="divide-y divide-zinc-800">
+                            <div class="p-5 flex items-center justify-between"><span>Aktivitas Operasi</span><strong x-text="formatCurrency(reportData.cashFlow.operasi)"></strong></div>
+                            <div class="p-5 flex items-center justify-between"><span>Aktivitas Investasi</span><strong x-text="formatCurrency(reportData.cashFlow.investasi)"></strong></div>
+                            <div class="p-5 flex items-center justify-between"><span>Aktivitas Pendanaan</span><strong x-text="formatCurrency(reportData.cashFlow.pendanaan)"></strong></div>
+                        </div>
+                    </div>
+                    <div class="glass rounded-2xl overflow-hidden">
+                        <div class="p-5 border-b border-zinc-800">
+                            <h3 class="font-bold">CaLK Dasar</h3>
+                        </div>
+                        <div class="p-5 space-y-3 text-sm text-zinc-400">
+                            <p x-text="reportData.notes.accountingPolicy"></p>
+                            <p>Akun aktif: <span class="text-white font-semibold" x-text="reportData.notes.accountCount"></span></p>
+                            <p>Dana aktif: <span class="text-white font-semibold" x-text="reportData.notes.activeFundCount"></span></p>
+                            <p>Jurnal posted: <span class="text-white font-semibold" x-text="reportData.notes.postedJournalCount"></span></p>
+                        </div>
+                    </div>
+                </div>
             </div>
 
             <!-- Settings View -->
@@ -892,23 +992,23 @@
     <div x-show="showPaymentModal" x-cloak class="fixed inset-0 bg-black/80 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
         <div class="glass p-8 rounded-2xl w-full max-w-md" @click.away="showPaymentModal = false">
             <h2 class="text-xl font-bold mb-4">Process Payment</h2>
-            <p class="text-zinc-400 mb-6">Student: <span class="text-white" x-text="selectedSantri?.nama"></span></p>
+            <p class="text-zinc-400 mb-6">Santri: <span class="text-white" x-text="selectedSantri?.nama"></span></p>
             <div class="space-y-4">
                 <div>
-                    <label class="block text-sm mb-1 text-zinc-400">Select Bill</label>
+                    <label class="block text-sm mb-1 text-zinc-400">Pilih Tagihan</label>
                     <select x-model="paymentData.id_billing" class="w-full bg-zinc-900 border border-zinc-800 rounded-lg p-2.5 outline-none focus:ring-1 focus:ring-primary">
-                        <option value="">-- Choose Bill --</option>
+                        <option value="">-- Pilih Tagihan --</option>
                         <template x-for="b in unpaidBills" :key="b.id_billing">
                             <option :value="b.id_billing" x-text="b.bulan + ' ' + b.tahun + ' (Rp ' + b.nominal + ')'"></option>
                         </template>
                     </select>
                 </div>
                 <div>
-                    <p class="text-xs text-zinc-500 mb-2 italic">Pembayaran akan diproses melalui Midtrans Gateway (QRIS, VA, E-Wallet)</p>
+                    <p class="text-xs text-zinc-500 mb-2 italic">Sistem akan membuat payment order QRIS dinamis. Mode default saat ini adalah mock sampai provider/PJSP diaktifkan.</p>
                 </div>
                 <div class="flex gap-4 mt-8">
-                    <button @click="showPaymentModal = false" class="flex-1 bg-zinc-800 py-3 rounded-lg">Cancel</button>
-                    <button @click="handleProcessPayment" class="flex-1 bg-primary py-3 rounded-lg font-semibold">Confirm</button>
+                    <button @click="showPaymentModal = false" class="flex-1 bg-zinc-800 py-3 rounded-lg">Batal</button>
+                    <button @click="handleProcessPayment" class="flex-1 bg-primary py-3 rounded-lg font-semibold">Buat QRIS</button>
                 </div>
             </div>
         </div>

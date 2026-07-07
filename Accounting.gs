@@ -2,14 +2,16 @@ function seedAccountingDefaults() {
   ensureAccountingSheets();
 
   const accountSheet = getSheetOrThrow('accounts');
-  if (accountSheet.getLastRow() === 1) {
-    appendRows(accountSheet, DEFAULT_ACCOUNTS);
-  }
+  appendMissingRowsByKey(accountSheet, 1, DEFAULT_ACCOUNTS);
 
   const fundSheet = getSheetOrThrow('funds');
-  if (fundSheet.getLastRow() === 1) {
-    appendRows(fundSheet, DEFAULT_FUNDS);
-  }
+  appendMissingRowsByKey(fundSheet, 0, DEFAULT_FUNDS);
+
+  const unitSheet = getSheetOrThrow('units');
+  appendMissingRowsByKey(unitSheet, 0, DEFAULT_UNITS);
+
+  const programSheet = getSheetOrThrow('programs');
+  appendMissingRowsByKey(programSheet, 0, DEFAULT_PROGRAMS);
 
   const periodSheet = getSheetOrThrow('fiscal_periods');
   if (periodSheet.getLastRow() === 1) {
@@ -28,6 +30,8 @@ function ensureAccountingSheets() {
   [
     'accounts',
     'funds',
+    'units',
+    'programs',
     'fiscal_periods',
     'journal_entries',
     'journal_lines',
@@ -56,6 +60,18 @@ function getDefaultFundId() {
   const funds = getSheetData('funds');
   const fund = funds.find(item => item.fund_id === DEFAULT_FUND_ID && isTruthyValue(item.is_active));
   return fund ? fund.fund_id : DEFAULT_FUND_ID;
+}
+
+function getDefaultUnitId() {
+  const units = getSheetData('units');
+  const unit = units.find(item => item.unit_id === DEFAULT_UNIT_ID && isTruthyValue(item.is_active));
+  return unit ? unit.unit_id : DEFAULT_UNIT_ID;
+}
+
+function getDefaultProgramId() {
+  const programs = getSheetData('programs');
+  const program = programs.find(item => item.program_id === DEFAULT_PROGRAM_ID && isTruthyValue(item.is_active));
+  return program ? program.program_id : DEFAULT_PROGRAM_ID;
 }
 
 function findJournalEntryBySource(sourceType, sourceId) {
@@ -118,6 +134,8 @@ function postJournalEntry(entryData) {
   const lineSheet = getSheetOrThrow('journal_lines');
   const date = entryData.date ? new Date(entryData.date) : new Date();
   const fundId = entryData.fund_id || getDefaultFundId();
+  const unitId = entryData.unit_id || getDefaultUnitId();
+  const programId = entryData.program_id || getDefaultProgramId();
   const createdBy = normalizeText(entryData.created_by) || 'System';
 
   entrySheet.appendRow([
@@ -129,7 +147,9 @@ function postJournalEntry(entryData) {
     fundId,
     'POSTED',
     new Date(),
-    createdBy
+    createdBy,
+    unitId,
+    programId
   ]);
 
   const rows = entryData.lines.map(line => buildJournalLine(journalId, line));
@@ -165,7 +185,9 @@ function postBillingJournal(billing) {
     description: `Tagihan SPP ${billing.bulan} ${billing.tahun}`,
     source_type: 'billing',
     source_id: billing.id_billing,
-    fund_id: getDefaultFundId(),
+    fund_id: billing.fund_id || getDefaultFundId(),
+    unit_id: billing.unit_id || getDefaultUnitId(),
+    program_id: billing.program_id || getDefaultProgramId(),
     created_by: 'System',
     lines: [
       { account_code: DEFAULT_ACCOUNT_CODES.SPP_RECEIVABLE, debit: amount, credit: 0, memo: billing.id_santri },
@@ -174,7 +196,7 @@ function postBillingJournal(billing) {
   });
 }
 
-function postPaymentJournal(orderId, idBilling, amount) {
+function postPaymentJournal(orderId, idBilling, amount, createdBy) {
   seedAccountingDefaults();
 
   const paymentAmount = normalizeNumber(amount);
@@ -182,17 +204,133 @@ function postPaymentJournal(orderId, idBilling, amount) {
     throw new Error('Nominal pembayaran harus lebih dari nol');
   }
 
+  const billing = getSheetData('billings').find(item => item.id_billing === idBilling) || {};
+
   return postJournalEntry({
     date: new Date(),
     description: `Pembayaran SPP ${idBilling}`,
     source_type: 'payment',
     source_id: orderId,
-    fund_id: getDefaultFundId(),
-    created_by: 'Midtrans',
+    fund_id: billing.fund_id || getDefaultFundId(),
+    unit_id: billing.unit_id || getDefaultUnitId(),
+    program_id: billing.program_id || getDefaultProgramId(),
+    created_by: createdBy || 'QRIS',
     lines: [
       { account_code: DEFAULT_ACCOUNT_CODES.CASH_BANK, debit: paymentAmount, credit: 0, memo: orderId },
       { account_code: DEFAULT_ACCOUNT_CODES.SPP_RECEIVABLE, debit: 0, credit: paymentAmount, memo: idBilling }
     ]
+  });
+}
+
+function postCashInJournal(data = {}) {
+  const amount = normalizeNumber(data.amount);
+  const creditAccount = data.credit_account_code || DEFAULT_ACCOUNT_CODES.DONATION_REVENUE;
+
+  return postJournalEntry({
+    date: data.date || new Date(),
+    description: data.description || 'Kas masuk',
+    source_type: data.source_type || 'cash_in',
+    source_id: data.source_id || generateId('CIN'),
+    fund_id: data.fund_id || getDefaultFundId(),
+    unit_id: data.unit_id || getDefaultUnitId(),
+    program_id: data.program_id || getDefaultProgramId(),
+    created_by: data.created_by || 'System',
+    lines: [
+      { account_code: DEFAULT_ACCOUNT_CODES.CASH_BANK, debit: amount, credit: 0, memo: data.memo || '' },
+      { account_code: creditAccount, debit: 0, credit: amount, memo: data.memo || '' }
+    ]
+  });
+}
+
+function postCashOutJournal(data = {}) {
+  const amount = normalizeNumber(data.amount);
+  const debitAccount = data.debit_account_code || DEFAULT_ACCOUNT_CODES.OPERATIONAL_EXPENSE;
+
+  return postJournalEntry({
+    date: data.date || new Date(),
+    description: data.description || 'Kas keluar',
+    source_type: data.source_type || 'cash_out',
+    source_id: data.source_id || generateId('COUT'),
+    fund_id: data.fund_id || getDefaultFundId(),
+    unit_id: data.unit_id || getDefaultUnitId(),
+    program_id: data.program_id || getDefaultProgramId(),
+    created_by: data.created_by || 'System',
+    lines: [
+      { account_code: debitAccount, debit: amount, credit: 0, memo: data.memo || '' },
+      { account_code: DEFAULT_ACCOUNT_CODES.CASH_BANK, debit: 0, credit: amount, memo: data.memo || '' }
+    ]
+  });
+}
+
+function postDonationJournal(data = {}) {
+  return postCashInJournal({
+    ...data,
+    source_type: 'donation',
+    credit_account_code: DEFAULT_ACCOUNT_CODES.DONATION_REVENUE,
+    description: data.description || 'Penerimaan infaq/donasi'
+  });
+}
+
+function postWaqfJournal(data = {}) {
+  const amount = normalizeNumber(data.amount);
+  return postJournalEntry({
+    date: data.date || new Date(),
+    description: data.description || 'Penerimaan wakaf',
+    source_type: 'waqf',
+    source_id: data.source_id || generateId('WQF'),
+    fund_id: data.fund_id || 'FUND_PERM_RESTRICTED',
+    unit_id: data.unit_id || getDefaultUnitId(),
+    program_id: data.program_id || 'PROGRAM_WAKAF',
+    created_by: data.created_by || 'System',
+    lines: [
+      { account_code: data.asset_account_code || DEFAULT_ACCOUNT_CODES.CASH_BANK, debit: amount, credit: 0, memo: data.memo || '' },
+      { account_code: DEFAULT_ACCOUNT_CODES.WAQF_REVENUE, debit: 0, credit: amount, memo: data.memo || '' }
+    ]
+  });
+}
+
+function postAssetPurchaseJournal(data = {}) {
+  return postCashOutJournal({
+    ...data,
+    source_type: 'asset_purchase',
+    debit_account_code: data.asset_account_code || DEFAULT_ACCOUNT_CODES.FIXED_ASSET,
+    description: data.description || 'Pembelian aset tetap'
+  });
+}
+
+function postDepreciationJournal(data = {}) {
+  const amount = normalizeNumber(data.amount);
+  return postJournalEntry({
+    date: data.date || new Date(),
+    description: data.description || 'Penyusutan aset',
+    source_type: 'depreciation',
+    source_id: data.source_id || generateId('DEP'),
+    fund_id: data.fund_id || getDefaultFundId(),
+    unit_id: data.unit_id || getDefaultUnitId(),
+    program_id: data.program_id || getDefaultProgramId(),
+    created_by: data.created_by || 'System',
+    lines: [
+      { account_code: DEFAULT_ACCOUNT_CODES.DEPRECIATION_EXPENSE, debit: amount, credit: 0, memo: data.memo || '' },
+      { account_code: DEFAULT_ACCOUNT_CODES.ACCUMULATED_DEPRECIATION, debit: 0, credit: amount, memo: data.memo || '' }
+    ]
+  });
+}
+
+function postInventoryPurchaseJournal(data = {}) {
+  return postCashOutJournal({
+    ...data,
+    source_type: 'inventory_purchase',
+    debit_account_code: DEFAULT_ACCOUNT_CODES.INVENTORY,
+    description: data.description || 'Pembelian persediaan'
+  });
+}
+
+function postBisarohJournal(data = {}) {
+  return postCashOutJournal({
+    ...data,
+    source_type: 'bisaroh',
+    debit_account_code: DEFAULT_ACCOUNT_CODES.BISAROH_EXPENSE,
+    description: data.description || 'Pembayaran bisaroh/gaji'
   });
 }
 

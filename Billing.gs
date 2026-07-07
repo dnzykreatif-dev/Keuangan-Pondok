@@ -59,7 +59,12 @@ function generateMonthlyBills(month, year, nominal) {
         selectedMonth,
         selectedYear,
         billAmount,
-        'Belum Lunas'
+        'Belum Lunas',
+        'SPP',
+        `Tagihan SPP ${selectedMonth} ${selectedYear}`,
+        getDefaultFundId(),
+        getDefaultUnitId(),
+        getDefaultProgramId()
       ]);
       billsToPost.push({
         id_billing: idBilling,
@@ -67,7 +72,12 @@ function generateMonthlyBills(month, year, nominal) {
         bulan: selectedMonth,
         tahun: selectedYear,
         nominal: billAmount,
-        status: 'Belum Lunas'
+        status: 'Belum Lunas',
+        billing_type: 'SPP',
+        description: `Tagihan SPP ${selectedMonth} ${selectedYear}`,
+        fund_id: getDefaultFundId(),
+        unit_id: getDefaultUnitId(),
+        program_id: getDefaultProgramId()
       });
     }
   });

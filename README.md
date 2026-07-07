@@ -1,58 +1,80 @@
 # Keuangan Pondok
 
-Aplikasi administrasi keuangan pondok pesantren berbasis Google Apps Script dan Google Spreadsheet. Versi saat ini berfokus pada pengelolaan santri, tagihan SPP, rekap tunggakan, pembayaran Midtrans, pengaturan profil, dan pondasi kode modular agar aplikasi mudah dikembangkan menjadi sistem akuntansi pesantren yang mengikuti arah Pedoman Akuntansi Pesantren (PAP).
+Aplikasi keuangan pondok pesantren berbasis Google Apps Script dan Google Spreadsheet. Arah produk saat ini adalah sistem keuangan pesantren yang ringan, bertahap, dan mengikuti arah Pedoman Akuntansi Pesantren (PAP), bukan hanya aplikasi pembayaran SPP.
 
 ## Status Produk
 
-Versi ini adalah fondasi teknis awal. Aplikasi sudah dapat dipakai untuk alur operasional SPP sederhana, tetapi belum menjadi sistem akuntansi double-entry penuh. Roadmap pengembangan berikutnya memprioritaskan chart of accounts, jurnal umum, buku besar, dana terikat/tidak terikat, dan laporan keuangan wajib pesantren.
+Versi ini sudah memiliki fondasi modular untuk:
+
+- Master santri dan tagihan.
+- Rekap tunggakan.
+- Payment order QRIS dinamis berbasis adapter provider.
+- Mock QRIS untuk simulasi tanpa akun payment provider.
+- Fondasi jurnal double-entry.
+- Master akun, dana, unit, program, periode fiskal, dan audit log.
+- Laporan dasar menuju PAP: neraca saldo, posisi keuangan, perubahan aset neto, arus kas, dan CaLK dasar.
+
+Provider QRIS nyata belum dipaksa aktif. Struktur adapter sudah disiapkan agar provider seperti Duitku, bank, atau PJSP lain bisa ditambahkan tanpa mengubah alur aplikasi.
 
 ## Fitur Saat Ini
 
-- Login admin berbasis data sheet `users`.
+- Login admin berbasis sheet `users`.
 - Master data santri.
-- Generate tagihan bulanan untuk semua santri aktif.
-- Rekap tunggakan berdasarkan tagihan belum lunas.
-- Pembayaran melalui Midtrans Snap sandbox.
-- Webhook Midtrans untuk mengubah tagihan menjadi `Lunas`.
-- Fondasi akuntansi double-entry untuk posting tagihan dan pembayaran SPP.
-- Menu jurnal dan laporan dasar dari data jurnal.
+- Generate tagihan bulanan untuk santri aktif.
+- Payment order QRIS dari tagihan.
+- Riwayat payment order dan callback event.
+- Callback pembayaran idempotent untuk mencegah jurnal ganda.
+- Posting otomatis:
+  - tagihan: debit Piutang SPP, kredit Pendapatan SPP;
+  - pembayaran: debit Kas/Bank, kredit Piutang SPP.
+- Fungsi backend untuk kas masuk, kas keluar, donasi, wakaf, aset, penyusutan, persediaan, dan bisaroh.
+- Menu jurnal dan laporan dasar.
 - Pengaturan nama lembaga dan logo.
-- Struktur backend modular per domain.
 
 ## Struktur File
 
-- `Code.gs`: entrypoint web app dan helper include HTML.
-- `Config.gs`: konfigurasi aplikasi, header sheet, dan konstanta bulan.
-- `Utils.gs`: helper spreadsheet, sheet, ID, normalisasi data, dan Script Properties.
-- `Setup.gs`: setup database dan import awal santri.
+- `Code.gs`: entrypoint web app.
+- `Config.gs`: konfigurasi, header sheet, akun default, dana, unit, program, dan provider pembayaran.
+- `Utils.gs`: helper spreadsheet, Script Properties, ID, hash, normalisasi, dan update row.
+- `Setup.gs`: setup database idempotent dan import santri awal.
 - `Auth.gs`: login.
-- `Santri.gs`: data santri dan tagihan santri.
+- `Santri.gs`: data santri dan tagihan per santri.
 - `Billing.gs`: dashboard, generate tagihan, dan rekap tunggakan.
-- `Payment.gs`: Midtrans, link pembayaran, transaksi pending, dan webhook.
-- `Accounting.gs`: master akun/dana, posting jurnal, audit log, dan neraca saldo.
-- `Reports.gs`: data laporan akuntansi dasar.
+- `Payment.gs`: payment order QRIS, adapter provider, callback, event, dan rekonsiliasi.
+- `Accounting.gs`: master akuntansi, posting jurnal, audit log, dan neraca saldo.
+- `Reports.gs`: data laporan PAP dasar.
 - `Settings.gs`: pengaturan aplikasi dan upload logo.
 - `Index.html`: frontend Alpine.js + Tailwind CSS.
-- `docs/`: dokumentasi pengguna, teknis, deployment, dan roadmap PAP.
 
 ## Setup Singkat
 
-1. Buat atau siapkan Google Spreadsheet.
-2. Salin ID spreadsheet ke `APP_CONFIG.SPREADSHEET_ID` di `Config.gs`.
-3. Buat project Google Apps Script dari spreadsheet tersebut.
-4. Upload semua file `.gs` dan `Index.html`.
-5. Isi Script Properties:
-   - `MIDTRANS_SERVER_KEY`
-   - `MIDTRANS_CLIENT_KEY`
-6. Jalankan `setupDatabase()` dari Apps Script Editor.
-7. Deploy sebagai Web App.
-8. Login default:
+1. Siapkan Google Spreadsheet.
+2. Isi `APP_CONFIG.SPREADSHEET_ID` di `Config.gs`.
+3. Push project ke Apps Script dengan clasp atau upload manual.
+4. Jalankan `setupDatabase()` dari Apps Script Editor.
+5. Deploy sebagai Web App.
+6. Login default:
    - Username: `admin`
    - Password: `admin123`
 
 Ganti password admin setelah setup awal.
 
-## Dokumentasi Lanjutan
+## Konfigurasi QRIS
+
+Default aplikasi memakai `MOCK_QRIS`, sehingga alur tagihan dan payment order bisa dites tanpa provider nyata.
+
+Script Properties yang tersedia:
+
+- `PAYMENT_PROVIDER`: isi `MOCK_QRIS` atau `DUITKU`.
+- `PAYMENT_CALLBACK_URL`: URL Web App untuk callback provider.
+- `PAYMENT_RETURN_URL`: URL kembali setelah pembayaran.
+- `PAYMENT_EXPIRY_MINUTES`: masa berlaku invoice.
+- `DUITKU_MERCHANT_CODE`: kode merchant Duitku.
+- `DUITKU_API_KEY`: API key Duitku.
+- `DUITKU_QRIS_METHOD`: kode metode QRIS jika provider mewajibkan directional payment.
+- `DUITKU_CALLBACK_SECRET`: secret verifikasi callback jika dipakai.
+
+## Dokumentasi
 
 - Panduan pengguna: `docs/MANUAL_BOOK.md`
 - Spesifikasi teknis: `docs/TECHNICAL_SPEC.md`
@@ -62,11 +84,4 @@ Ganti password admin setelah setup awal.
 
 ## Catatan Keamanan
 
-Aplikasi ini masih memakai localStorage untuk status login di frontend. Untuk penggunaan produksi, tahap berikutnya perlu menambahkan validasi sesi dan otorisasi di sisi server untuk semua fungsi sensitif.
-
-## Roadmap Ringkas
-
-- Fase 1: fondasi akuntansi double-entry.
-- Fase 2: empat laporan wajib PAP.
-- Fase 3: modul pesantren seperti wakaf, aset, persediaan, dan bisaroh.
-- Fase 4: UX operasional, audit log, dan template akun siap pakai.
+Aplikasi masih memakai localStorage untuk status login di frontend. Untuk produksi, fungsi sensitif perlu validasi sesi dan otorisasi server-side. Provider pembayaran nyata harus memakai secret di Script Properties, bukan di kode.

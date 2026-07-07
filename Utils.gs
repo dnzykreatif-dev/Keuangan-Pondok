@@ -7,12 +7,8 @@ function getAppProperty(name, fallback = '') {
   return value || fallback;
 }
 
-function getMidtransServerKey() {
-  return getAppProperty('MIDTRANS_SERVER_KEY', APP_CONFIG.MIDTRANS_SERVER_KEY);
-}
-
-function getMidtransClientKey() {
-  return getAppProperty('MIDTRANS_CLIENT_KEY', APP_CONFIG.MIDTRANS_CLIENT_KEY);
+function getConfiguredPaymentProviderId() {
+  return getAppProperty('PAYMENT_PROVIDER', APP_CONFIG.DEFAULT_PAYMENT_PROVIDER);
 }
 
 function getSheetOrThrow(sheetName) {
@@ -78,6 +74,53 @@ function appendRows(sheet, rows) {
   if (!rows.length) return;
   const startRow = sheet.getLastRow() + 1;
   sheet.getRange(startRow, 1, rows.length, rows[0].length).setValues(rows);
+}
+
+function appendMissingRowsByKey(sheet, keyColumnIndex, rows) {
+  if (!rows.length) return;
+
+  const existingValues = sheet.getDataRange().getValues();
+  const existingKeys = new Set(existingValues.slice(1).map(row => String(row[keyColumnIndex])));
+  const rowsToAppend = rows.filter(row => !existingKeys.has(String(row[keyColumnIndex])));
+  appendRows(sheet, rowsToAppend);
+}
+
+function appendObjectRow(sheetName, data) {
+  const headers = SHEET_HEADERS[sheetName];
+  const sheet = getSheetOrThrow(sheetName);
+  sheet.appendRow(headers.map(header => data.hasOwnProperty(header) ? data[header] : ''));
+}
+
+function updateSheetRowByKey(sheetName, keyName, keyValue, updates) {
+  const sheet = getSheetOrThrow(sheetName);
+  const values = sheet.getDataRange().getValues();
+  const headers = values[0] || [];
+  const keyIndex = headers.indexOf(keyName);
+
+  if (keyIndex === -1) {
+    throw new Error(`Kolom kunci tidak ditemukan: ${keyName}`);
+  }
+
+  for (let rowIndex = 1; rowIndex < values.length; rowIndex++) {
+    if (String(values[rowIndex][keyIndex]) === String(keyValue)) {
+      Object.keys(updates).forEach(field => {
+        const columnIndex = headers.indexOf(field);
+        if (columnIndex !== -1) {
+          sheet.getRange(rowIndex + 1, columnIndex + 1).setValue(updates[field]);
+        }
+      });
+      return true;
+    }
+  }
+
+  return false;
+}
+
+function bytesToHex(bytes) {
+  return bytes.map(byte => {
+    const normalized = byte < 0 ? byte + 256 : byte;
+    return normalized.toString(16).padStart(2, '0');
+  }).join('');
 }
 
 function normalizeText(value) {

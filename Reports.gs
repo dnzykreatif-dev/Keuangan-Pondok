@@ -47,6 +47,10 @@ function getAccountingReportData() {
     balance: fundBalances[fund.fund_id] || 0
   }));
 
+  const financialPosition = buildFinancialPosition(trialBalance);
+  const cashFlow = buildCashFlowReport(entries, lines, trialBalance);
+  const notes = buildBasicNotes(trialBalance, funds, entries);
+
   return {
     ok: true,
     data: {
@@ -59,7 +63,92 @@ function getAccountingReportData() {
         cashBank,
         sppReceivable
       },
-      netAssetSummary
+      netAssetSummary,
+      financialPosition,
+      cashFlow,
+      notes
     }
+  };
+}
+
+function buildFinancialPosition(trialBalance) {
+  const groups = {
+    assets: [],
+    liabilities: [],
+    netAssets: []
+  };
+
+  trialBalance.forEach(account => {
+    const row = {
+      code: account.code,
+      name: account.name,
+      balance: normalizeNumber(account.balance)
+    };
+
+    if (account.type === 'Aset') groups.assets.push(row);
+    if (account.type === 'Liabilitas') groups.liabilities.push(row);
+    if (account.type === 'Aset Neto') groups.netAssets.push(row);
+  });
+
+  return {
+    assets: groups.assets,
+    liabilities: groups.liabilities,
+    netAssets: groups.netAssets,
+    totalAssets: groups.assets.reduce((sum, row) => sum + row.balance, 0),
+    totalLiabilities: groups.liabilities.reduce((sum, row) => sum + row.balance, 0),
+    totalNetAssets: groups.netAssets.reduce((sum, row) => sum + row.balance, 0)
+  };
+}
+
+function getCashFlowActivity(sourceType) {
+  const type = normalizeText(sourceType);
+  if (['asset_purchase', 'depreciation', 'inventory_purchase'].indexOf(type) !== -1) return 'investasi';
+  if (['waqf', 'donation'].indexOf(type) !== -1) return 'pendanaan';
+  return 'operasi';
+}
+
+function buildCashFlowReport(entries, lines, trialBalance) {
+  const entryById = {};
+  entries.forEach(entry => {
+    entryById[entry.journal_id] = entry;
+  });
+
+  const cashAccount = trialBalance.find(account => String(account.code) === DEFAULT_ACCOUNT_CODES.CASH_BANK);
+  const result = {
+    operasi: 0,
+    investasi: 0,
+    pendanaan: 0,
+    total: 0
+  };
+
+  if (!cashAccount) return result;
+
+  lines
+    .filter(line => line.account_id === cashAccount.account_id || String(line.account_code) === DEFAULT_ACCOUNT_CODES.CASH_BANK)
+    .forEach(line => {
+      const entry = entryById[line.journal_id] || {};
+      const activity = getCashFlowActivity(entry.source_type);
+      const amount = normalizeNumber(line.debit) - normalizeNumber(line.credit);
+      result[activity] += amount;
+      result.total += amount;
+    });
+
+  return result;
+}
+
+function buildBasicNotes(trialBalance, funds, entries) {
+  return {
+    accountingPolicy: 'Basis pencatatan menggunakan double-entry berbasis jurnal. Laporan dihitung dari journal_lines yang sudah balance.',
+    accountCount: trialBalance.length,
+    activeFundCount: funds.filter(fund => isTruthyValue(fund.is_active)).length,
+    postedJournalCount: entries.filter(entry => entry.status !== 'VOID').length,
+    materialAccounts: trialBalance
+      .filter(account => Math.abs(normalizeNumber(account.balance)) > 0)
+      .map(account => ({
+        code: account.code,
+        name: account.name,
+        type: account.type,
+        balance: account.balance
+      }))
   };
 }
