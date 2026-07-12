@@ -1,0 +1,25 @@
+<!-- Payment Modal -->
+<div x-show="showPaymentModal" x-cloak class="fixed inset-0 bg-black/80 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
+    <div class="glass p-8 rounded-2xl w-full max-w-md" @click.away="showPaymentModal = false">
+        <h2 class="text-xl font-bold mb-4">Process Payment</h2>
+        <p class="text-zinc-400 mb-6">Santri: <span class="text-white" x-text="selectedSantri?.nama"></span></p>
+        <div class="space-y-4">
+            <div>
+                <label class="block text-sm mb-1 text-zinc-400">Pilih Tagihan</label>
+                <select x-model="paymentData.id_billing" class="w-full bg-zinc-900 border border-zinc-800 rounded-lg p-2.5 outline-none focus:ring-1 focus:ring-primary">
+                    <option value="">-- Pilih Tagihan --</option>
+                    <template x-for="b in unpaidBills" :key="b.id_billing">
+                        <option :value="b.id_billing" x-text="b.bulan + ' ' + b.tahun + ' (Rp ' + b.nominal + ')'"></option>
+                    </template>
+                </select>
+            </div>
+            <div>
+                <p class="text-xs text-zinc-500 mb-2 italic">Sistem akan membuat payment order QRIS dinamis. Mode default saat ini adalah mock sampai provider/PJSP diaktifkan.</p>
+            </div>
+            <div class="flex gap-4 mt-8">
+                <button @click="showPaymentModal = false" class="flex-1 bg-zinc-800 py-3 rounded-lg">Batal</button>
+                <button @click="handleProcessPayment" class="flex-1 bg-primary py-3 rounded-lg font-semibold">Buat QRIS</button>
+            </div>
+        </div>
+    </div>
+</div>

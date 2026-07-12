@@ -1,0 +1,510 @@
+    <!-- Main Dashboard -->
+    <div x-show="isLoggedIn" x-cloak class="flex flex-col md:flex-row min-h-screen bg-surface">
+        <!-- Mobile Header -->
+        <div class="md:hidden glass border-b border-zinc-800 p-4 flex justify-between items-center sticky top-0 z-40">
+            <h2 class="text-lg font-bold text-primary">Keuangan Pondok</h2>
+            <button @click="mobileMenuOpen = !mobileMenuOpen" class="p-2 hover:bg-zinc-800 rounded-lg">
+                <i data-lucide="menu" class="w-6 h-6"></i>
+            </button>
+        </div>
+
+        <!-- Sidebar -->
+        <aside :class="mobileMenuOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'" 
+               class="fixed inset-y-0 left-0 z-50 w-64 glass border-r border-zinc-800 p-6 flex flex-col transition-transform duration-300 md:relative">
+            <div class="flex items-center gap-3 mb-10">
+                <template x-if="settings.logo_url">
+                    <img :src="settings.logo_url" class="w-10 h-10 object-contain rounded-lg">
+                </template>
+                <template x-if="!settings.logo_url">
+                    <div class="w-10 h-10 bg-primary rounded-lg flex items-center justify-center">
+                        <i data-lucide="graduation-cap" class="w-6 h-6 text-white"></i>
+                    </div>
+                </template>
+                <h2 class="text-xl font-bold tracking-tight truncate" x-text="settings.school_name || 'Keuangan Pondok'"></h2>
+            </div>
+            
+            <nav class="space-y-1.5 flex-1">
+                <button @click="view = 'dashboard'; mobileMenuOpen = false" :class="view === 'dashboard' ? 'sidebar-item-active' : 'text-zinc-400 hover:bg-zinc-800/50 hover:text-white'" class="w-full text-left px-4 py-3 rounded-xl flex items-center gap-3 transition-all group">
+                    <i data-lucide="layout-dashboard" class="w-5 h-5"></i>
+                    <span class="font-medium">Dashboard</span>
+                </button>
+                <button @click="view = 'santri'; fetchSantri(); mobileMenuOpen = false" :class="view === 'santri' ? 'sidebar-item-active' : 'text-zinc-400 hover:bg-zinc-800/50 hover:text-white'" class="w-full text-left px-4 py-3 rounded-xl flex items-center gap-3 transition-all group">
+                    <i data-lucide="users" class="w-5 h-5"></i>
+                    <span class="font-medium">Data Santri</span>
+                </button>
+                <button @click="view = 'billing'; mobileMenuOpen = false" :class="view === 'billing' ? 'sidebar-item-active' : 'text-zinc-400 hover:bg-zinc-800/50 hover:text-white'" class="w-full text-left px-4 py-3 rounded-xl flex items-center gap-3 transition-all group">
+                    <i data-lucide="file-text" class="w-5 h-5"></i>
+                    <span class="font-medium">Tagihan</span>
+                </button>
+                <button @click="view = 'arrears'; fetchArrears(); mobileMenuOpen = false" :class="view === 'arrears' ? 'sidebar-item-active' : 'text-zinc-400 hover:bg-zinc-800/50 hover:text-white'" class="w-full text-left px-4 py-3 rounded-xl flex items-center gap-3 transition-all group">
+                    <i data-lucide="clock" class="w-5 h-5"></i>
+                    <span class="font-medium">Rekap Tunggakan</span>
+                </button>
+                <button @click="view = 'payments'; fetchPaymentOrders(); mobileMenuOpen = false" :class="view === 'payments' ? 'sidebar-item-active' : 'text-zinc-400 hover:bg-zinc-800/50 hover:text-white'" class="w-full text-left px-4 py-3 rounded-xl flex items-center gap-3 transition-all group">
+                    <i data-lucide="qr-code" class="w-5 h-5"></i>
+                    <span class="font-medium">Pembayaran QRIS</span>
+                </button>
+                <button @click="view = 'journals'; fetchJournals(); mobileMenuOpen = false" :class="view === 'journals' ? 'sidebar-item-active' : 'text-zinc-400 hover:bg-zinc-800/50 hover:text-white'" class="w-full text-left px-4 py-3 rounded-xl flex items-center gap-3 transition-all group">
+                    <i data-lucide="book-open" class="w-5 h-5"></i>
+                    <span class="font-medium">Jurnal</span>
+                </button>
+                <button @click="view = 'reports'; fetchReports(); mobileMenuOpen = false" :class="view === 'reports' ? 'sidebar-item-active' : 'text-zinc-400 hover:bg-zinc-800/50 hover:text-white'" class="w-full text-left px-4 py-3 rounded-xl flex items-center gap-3 transition-all group">
+                    <i data-lucide="bar-chart-3" class="w-5 h-5"></i>
+                    <span class="font-medium">Laporan</span>
+                </button>
+                <button @click="view = 'settings'; mobileMenuOpen = false" :class="view === 'settings' ? 'sidebar-item-active' : 'text-zinc-400 hover:bg-zinc-800/50 hover:text-white'" class="w-full text-left px-4 py-3 rounded-xl flex items-center gap-3 transition-all group">
+                    <i data-lucide="settings" class="w-5 h-5"></i>
+                    <span class="font-medium">Pengaturan</span>
+                </button>
+            </nav>
+
+            <div class="pt-6 border-t border-zinc-800">
+                <div class="flex items-center gap-3 px-4 py-3 mb-4">
+                    <div class="w-8 h-8 rounded-full bg-zinc-800 flex items-center justify-center text-xs font-bold" x-text="user.username?.charAt(0).toUpperCase()"></div>
+                    <div class="overflow-hidden">
+                        <p class="text-sm font-medium truncate" x-text="user.username"></p>
+                        <p class="text-xs text-zinc-500 truncate" x-text="user.role"></p>
+                    </div>
+                </div>
+                <button @click="logout" class="w-full text-zinc-500 hover:text-danger px-4 py-2 rounded-lg flex items-center gap-3 transition-colors">
+                    <i data-lucide="log-out" class="w-4 h-4"></i>
+                    <span class="text-sm font-medium">Logout</span>
+                </button>
+            </div>
+        </aside>
+
+        <main class="flex-1 p-6 md:p-10 overflow-y-auto relative">
+            <header class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-10">
+                <div>
+                    <h1 class="text-3xl font-bold tracking-tight" x-text="viewTitle()"></h1>
+                    <p class="text-zinc-400 mt-1">Sistem Informasi Pembayaran SPP Pesantren</p>
+                </div>
+            </header>
+
+            <!-- Dashboard View -->
+            <div x-show="view === 'dashboard'" class="animate-in space-y-10">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div class="glass p-6 rounded-2xl border-l-4 border-l-primary">
+                        <div class="flex justify-between items-start mb-4">
+                            <div class="p-2 bg-primary/10 rounded-lg"><i data-lucide="wallet" class="w-5 h-5 text-primary"></i></div>
+                            <span class="text-[10px] font-bold uppercase tracking-widest text-zinc-500">Total Pendapatan</span>
+                        </div>
+                        <h3 class="text-3xl font-bold tracking-tight" x-text="formatCurrency(stats.totalRevenue)"></h3>
+                    </div>
+                    <div class="glass p-6 rounded-2xl border-l-4 border-l-danger">
+                        <div class="flex justify-between items-start mb-4">
+                            <div class="p-2 bg-danger/10 rounded-lg"><i data-lucide="alert-triangle" class="w-5 h-5 text-danger"></i></div>
+                            <span class="text-[10px] font-bold uppercase tracking-widest text-zinc-500">Total Tunggakan</span>
+                        </div>
+                        <h3 class="text-3xl font-bold tracking-tight text-danger" x-text="formatCurrency(stats.totalArrears)"></h3>
+                    </div>
+                    <div class="glass p-6 rounded-2xl border-l-4 border-l-success">
+                        <div class="flex justify-between items-start mb-4">
+                            <div class="p-2 bg-success/10 rounded-lg"><i data-lucide="users" class="w-5 h-5 text-success"></i></div>
+                            <span class="text-[10px] font-bold uppercase tracking-widest text-zinc-500">Santri Aktif</span>
+                        </div>
+                        <div class="flex items-baseline gap-2">
+                            <h3 class="text-3xl font-bold tracking-tight" x-text="stats.activeSantriCount"></h3>
+                            <span class="text-zinc-500 text-sm font-medium">Orang</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <div class="glass p-8 rounded-3xl">
+                        <h4 class="text-lg font-bold mb-6 flex items-center gap-2"><i data-lucide="zap" class="w-5 h-5 text-primary"></i>Aksi Cepat</h4>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <button @click="showAddSantriModal = true" class="p-4 bg-zinc-900/50 border border-zinc-800 rounded-2xl hover:border-primary/50 transition-all text-left group">
+                                <i data-lucide="user-plus" class="w-6 h-6 text-zinc-400 group-hover:text-primary mb-3"></i>
+                                <p class="text-sm font-bold">Tambah Santri</p>
+                                <p class="text-xs text-zinc-500">Registrasi santri baru</p>
+                            </button>
+                            <button @click="view = 'billing'" class="p-4 bg-zinc-900/50 border border-zinc-800 rounded-2xl hover:border-primary/50 transition-all text-left group">
+                                <i data-lucide="file-plus" class="w-6 h-6 text-zinc-400 group-hover:text-primary mb-3"></i>
+                                <p class="text-sm font-bold">Buat Tagihan</p>
+                                <p class="text-xs text-zinc-500">Generate SPP bulanan</p>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Santri View -->
+            <div x-show="view === 'santri'" class="animate-in space-y-4">
+                <div class="flex flex-col sm:flex-row justify-between gap-4 mb-4">
+                    <input type="text" placeholder="Search santri..." class="bg-zinc-900 border border-zinc-800 rounded-lg px-4 py-2 w-full sm:w-64 outline-none focus:ring-1 focus:ring-primary">
+                    <button @click="showAddSantriModal = true" class="bg-primary px-4 py-2 rounded-lg font-semibold whitespace-nowrap">+ Tambah Santri</button>
+                </div>
+                <div class="glass rounded-2xl overflow-hidden">
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left">
+                            <thead class="bg-zinc-900/50 text-zinc-400 text-xs uppercase">
+                                <tr>
+                                    <th class="p-4">ID</th>
+                                    <th class="p-4">Nama</th>
+                                    <th class="p-4">Kelas</th>
+                                    <th class="p-4">Status</th>
+                                    <th class="p-4">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-zinc-800">
+                                <template x-for="s in santriList" :key="s.id_santri">
+                                    <tr class="hover:bg-zinc-800/50 transition-colors">
+                                        <td class="p-4 text-zinc-400" x-text="s.id_santri"></td>
+                                        <td class="p-4 font-semibold" x-text="s.nama"></td>
+                                        <td class="p-4" x-text="s.kelas"></td>
+                                        <td class="p-4">
+                                            <span class="px-2 py-1 rounded text-xs" :class="s.status === 'Aktif' ? 'bg-success/20 text-success' : 'bg-zinc-800 text-zinc-400'" x-text="s.status"></span>
+                                        </td>
+                                        <td class="p-4 flex gap-3">
+                                            <button @click="openPaymentModal(s)" class="text-primary hover:underline text-sm font-semibold">Bayar QRIS</button>
+                                            <button @click="sendPaymentLink(s)" class="text-success hover:underline text-sm font-semibold">Kirim Link</button>
+                                        </td>
+                                    </tr>
+                                </template>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Billing View -->
+            <div x-show="view === 'billing'" class="animate-in">
+                <div class="glass p-8 rounded-2xl max-w-lg">
+                    <h2 class="text-xl font-bold mb-6">Generate Monthly Bills</h2>
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm mb-1 text-zinc-400">Bulan & Tahun</label>
+                            <div class="grid grid-cols-2 gap-4">
+                                <select x-model="genBill.month" class="bg-zinc-900 border border-zinc-800 rounded-lg p-2.5 outline-none focus:ring-1 focus:ring-primary">
+                                    <option value="Januari">Januari</option>
+                                    <option value="Februari">Februari</option>
+                                    <option value="Maret">Maret</option>
+                                    <option value="April">April</option>
+                                    <option value="Mei">Mei</option>
+                                    <option value="Juni">Juni</option>
+                                    <option value="Juli">Juli</option>
+                                    <option value="Agustus">Agustus</option>
+                                    <option value="September">September</option>
+                                    <option value="Oktober">Oktober</option>
+                                    <option value="November">November</option>
+                                    <option value="Desember">Desember</option>
+                                </select>
+                                <input type="number" x-model="genBill.year" class="bg-zinc-900 border border-zinc-800 rounded-lg p-2.5 outline-none focus:ring-1 focus:ring-primary">
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-sm mb-1 text-zinc-400">Nominal (Rp)</label>
+                            <input type="number" x-model="genBill.nominal" class="w-full bg-zinc-900 border border-zinc-800 rounded-lg p-2.5 outline-none focus:ring-1 focus:ring-primary">
+                        </div>
+                        <button @click="handleGenerateBills" class="w-full bg-primary py-3 rounded-lg font-semibold">Generate for All Active Santri</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Arrears View -->
+            <div x-show="view === 'arrears'" class="animate-in space-y-4">
+                <div class="flex flex-col sm:flex-row justify-between gap-4 mb-4">
+                    <div class="flex items-center gap-3">
+                        <label class="text-sm font-medium text-zinc-400">Filter Kelas:</label>
+                        <select x-model="selectedClassFilter" class="bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-primary">
+                            <option value="">Semua Kelas</option>
+                            <template x-for="cls in uniqueClasses" :key="cls">
+                                <option :value="cls" x-text="cls"></option>
+                            </template>
+                        </select>
+                    </div>
+                    <div class="text-sm text-zinc-500">
+                        Menampilkan <span class="text-white font-bold" x-text="getFilteredArrears().length"></span> tunggakan
+                    </div>
+                </div>
+                <div class="glass rounded-2xl overflow-hidden">
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left">
+                            <thead class="bg-zinc-900/50 text-zinc-400 text-xs uppercase">
+                                <tr>
+                                    <th class="p-4">Nama</th>
+                                    <th class="p-4">Kelas</th>
+                                    <th class="p-4">Bulan/Tahun</th>
+                                    <th class="p-4">Nominal</th>
+                                    <th class="p-4">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-zinc-800">
+                                <template x-for="a in getFilteredArrears()" :key="a.id_billing">
+                                    <tr class="hover:bg-zinc-800/50 transition-colors">
+                                        <td class="p-4 font-semibold" x-text="a.nama"></td>
+                                        <td class="p-4" x-text="a.kelas"></td>
+                                        <td class="p-4" x-text="a.bulan + ' ' + a.tahun"></td>
+                                        <td class="p-4 text-danger font-semibold" x-text="formatCurrency(a.nominal)"></td>
+                                        <td class="p-4">
+                                            <a :href="'https://wa.me/' + a.kontak + '?text=Assalamu%27alaikum%2C%20mohon%20segera%20melunasi%20SPP%20bulan%20' + a.bulan" target="_blank" class="bg-success/20 text-success px-3 py-1 rounded text-xs font-semibold">Remind WA</a>
+                                        </td>
+                                    </tr>
+                                </template>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Payments View -->
+            <div x-show="view === 'payments'" class="animate-in space-y-4">
+                <div class="flex flex-col sm:flex-row justify-between gap-4 mb-4">
+                    <div>
+                        <h2 class="text-xl font-bold">Pembayaran QRIS</h2>
+                        <p class="text-sm text-zinc-500 mt-1">Payment order dinamis dari tagihan pesantren</p>
+                    </div>
+                    <button @click="fetchPaymentOrders" class="bg-zinc-800 hover:bg-zinc-700 px-4 py-2 rounded-lg text-sm font-semibold flex items-center gap-2">
+                        <i data-lucide="refresh-cw" class="w-4 h-4"></i>
+                        Refresh
+                    </button>
+                </div>
+                <div class="glass rounded-2xl overflow-hidden">
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left">
+                            <thead class="bg-zinc-900/50 text-zinc-400 text-xs uppercase">
+                                <tr>
+                                    <th class="p-4">Tanggal</th>
+                                    <th class="p-4">Order</th>
+                                    <th class="p-4">Provider</th>
+                                    <th class="p-4">Sumber</th>
+                                    <th class="p-4 text-right">Nominal</th>
+                                    <th class="p-4">Status</th>
+                                    <th class="p-4">Link/QR</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-zinc-800">
+                                <template x-for="order in paymentOrders" :key="order.order_id">
+                                    <tr class="hover:bg-zinc-800/50 transition-colors">
+                                        <td class="p-4 text-zinc-400 whitespace-nowrap" x-text="formatDate(order.created_at)"></td>
+                                        <td class="p-4 text-xs text-zinc-500" x-text="order.order_id"></td>
+                                        <td class="p-4 font-semibold" x-text="order.provider_id"></td>
+                                        <td class="p-4 text-zinc-400" x-text="order.source_type + ' / ' + order.source_id"></td>
+                                        <td class="p-4 text-right" x-text="formatCurrency(order.amount)"></td>
+                                        <td class="p-4">
+                                            <span class="px-2 py-1 rounded text-xs font-semibold" :class="String(order.status).toUpperCase() === 'PAID' ? 'bg-success/20 text-success' : 'bg-primary/20 text-primary'" x-text="order.status"></span>
+                                        </td>
+                                        <td class="p-4">
+                                            <a x-show="order.payment_url" :href="order.payment_url" target="_blank" class="text-primary hover:underline text-sm font-semibold">Buka</a>
+                                            <span x-show="!order.payment_url" class="text-xs text-zinc-500" x-text="order.qr_string || '-'"></span>
+                                        </td>
+                                    </tr>
+                                </template>
+                                <tr x-show="paymentOrders.length === 0">
+                                    <td colspan="7" class="p-6 text-center text-sm text-zinc-500">Belum ada payment order.</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Journals View -->
+            <div x-show="view === 'journals'" class="animate-in space-y-4">
+                <div class="flex flex-col sm:flex-row justify-between gap-4 mb-4">
+                    <div>
+                        <h2 class="text-xl font-bold">Jurnal Otomatis</h2>
+                        <p class="text-sm text-zinc-500 mt-1">Posting dari tagihan, QRIS, kas, wakaf, aset, persediaan, dan bisaroh</p>
+                    </div>
+                    <button @click="fetchJournals" class="bg-zinc-800 hover:bg-zinc-700 px-4 py-2 rounded-lg text-sm font-semibold flex items-center gap-2">
+                        <i data-lucide="refresh-cw" class="w-4 h-4"></i>
+                        Refresh
+                    </button>
+                </div>
+                <div class="glass rounded-2xl overflow-hidden">
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left">
+                            <thead class="bg-zinc-900/50 text-zinc-400 text-xs uppercase">
+                                <tr>
+                                    <th class="p-4">Tanggal</th>
+                                    <th class="p-4">No. Jurnal</th>
+                                    <th class="p-4">Deskripsi</th>
+                                    <th class="p-4">Sumber</th>
+                                    <th class="p-4 text-right">Debit</th>
+                                    <th class="p-4 text-right">Kredit</th>
+                                    <th class="p-4">Status</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-zinc-800">
+                                <template x-for="j in journalEntries" :key="j.journal_id">
+                                    <tr class="hover:bg-zinc-800/50 transition-colors">
+                                        <td class="p-4 text-zinc-400 whitespace-nowrap" x-text="formatDate(j.date)"></td>
+                                        <td class="p-4 text-xs text-zinc-500" x-text="j.journal_id"></td>
+                                        <td class="p-4 font-semibold" x-text="j.description"></td>
+                                        <td class="p-4 text-zinc-400" x-text="j.source_type + ' / ' + j.source_id"></td>
+                                        <td class="p-4 text-right" x-text="formatCurrency(j.total_debit)"></td>
+                                        <td class="p-4 text-right" x-text="formatCurrency(j.total_credit)"></td>
+                                        <td class="p-4">
+                                            <span class="px-2 py-1 rounded text-xs font-semibold" :class="j.is_balance ? 'bg-success/20 text-success' : 'bg-danger/20 text-danger'" x-text="j.is_balance ? 'Balance' : 'Tidak Balance'"></span>
+                                        </td>
+                                    </tr>
+                                </template>
+                                <tr x-show="journalEntries.length === 0">
+                                    <td colspan="7" class="p-6 text-center text-sm text-zinc-500">Belum ada jurnal.</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Reports View -->
+            <div x-show="view === 'reports'" class="animate-in space-y-6">
+                <div class="flex flex-col sm:flex-row justify-between gap-4">
+                    <div>
+                        <h2 class="text-xl font-bold">Laporan Dasar</h2>
+                        <p class="text-sm text-zinc-500 mt-1">Ringkasan awal menuju empat laporan PAP</p>
+                    </div>
+                    <button @click="fetchReports" class="bg-zinc-800 hover:bg-zinc-700 px-4 py-2 rounded-lg text-sm font-semibold flex items-center gap-2">
+                        <i data-lucide="refresh-cw" class="w-4 h-4"></i>
+                        Refresh
+                    </button>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-4">
+                    <div class="glass p-5 rounded-2xl border-l-4 border-l-success">
+                        <p class="text-xs uppercase tracking-widest text-zinc-500 font-bold">Kas/Bank</p>
+                        <h3 class="text-2xl font-bold mt-3" x-text="formatCurrency(reportData.summary.cashBank)"></h3>
+                    </div>
+                    <div class="glass p-5 rounded-2xl border-l-4 border-l-danger">
+                        <p class="text-xs uppercase tracking-widest text-zinc-500 font-bold">Piutang SPP</p>
+                        <h3 class="text-2xl font-bold mt-3" x-text="formatCurrency(reportData.summary.sppReceivable)"></h3>
+                    </div>
+                    <div class="glass p-5 rounded-2xl border-l-4 border-l-primary">
+                        <p class="text-xs uppercase tracking-widest text-zinc-500 font-bold">Total Debit</p>
+                        <h3 class="text-2xl font-bold mt-3" x-text="formatCurrency(reportData.summary.totalDebit)"></h3>
+                    </div>
+                    <div class="glass p-5 rounded-2xl border-l-4 border-l-primary">
+                        <p class="text-xs uppercase tracking-widest text-zinc-500 font-bold">Total Kredit</p>
+                        <h3 class="text-2xl font-bold mt-3" x-text="formatCurrency(reportData.summary.totalCredit)"></h3>
+                    </div>
+                    <div class="glass p-5 rounded-2xl border-l-4" :class="reportData.summary.isBalanced ? 'border-l-success' : 'border-l-danger'">
+                        <p class="text-xs uppercase tracking-widest text-zinc-500 font-bold">Balance</p>
+                        <h3 class="text-2xl font-bold mt-3" x-text="reportData.summary.isBalanced ? 'Balance' : 'Cek Jurnal'"></h3>
+                    </div>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+                    <div class="glass p-5 rounded-2xl">
+                        <p class="text-xs uppercase tracking-widest text-zinc-500 font-bold">Total Aset</p>
+                        <h3 class="text-2xl font-bold mt-3" x-text="formatCurrency(reportData.financialPosition.totalAssets)"></h3>
+                    </div>
+                    <div class="glass p-5 rounded-2xl">
+                        <p class="text-xs uppercase tracking-widest text-zinc-500 font-bold">Total Liabilitas</p>
+                        <h3 class="text-2xl font-bold mt-3" x-text="formatCurrency(reportData.financialPosition.totalLiabilities)"></h3>
+                    </div>
+                    <div class="glass p-5 rounded-2xl">
+                        <p class="text-xs uppercase tracking-widest text-zinc-500 font-bold">Total Aset Neto</p>
+                        <h3 class="text-2xl font-bold mt-3" x-text="formatCurrency(reportData.financialPosition.totalNetAssets)"></h3>
+                    </div>
+                    <div class="glass p-5 rounded-2xl">
+                        <p class="text-xs uppercase tracking-widest text-zinc-500 font-bold">Arus Kas Bersih</p>
+                        <h3 class="text-2xl font-bold mt-3" x-text="formatCurrency(reportData.cashFlow.total)"></h3>
+                    </div>
+                </div>
+                <div class="grid grid-cols-1 xl:grid-cols-2 gap-6">
+                    <div class="glass rounded-2xl overflow-hidden">
+                        <div class="p-5 border-b border-zinc-800">
+                            <h3 class="font-bold">Neraca Saldo</h3>
+                        </div>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left">
+                                <thead class="bg-zinc-900/50 text-zinc-400 text-xs uppercase">
+                                    <tr>
+                                        <th class="p-4">Akun</th>
+                                        <th class="p-4 text-right">Debit</th>
+                                        <th class="p-4 text-right">Kredit</th>
+                                        <th class="p-4 text-right">Saldo</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-zinc-800">
+                                    <template x-for="row in reportData.trialBalance" :key="row.account_id">
+                                        <tr class="hover:bg-zinc-800/50 transition-colors">
+                                            <td class="p-4">
+                                                <p class="font-semibold" x-text="row.code + ' - ' + row.name"></p>
+                                                <p class="text-xs text-zinc-500" x-text="row.type"></p>
+                                            </td>
+                                            <td class="p-4 text-right" x-text="formatCurrency(row.debit)"></td>
+                                            <td class="p-4 text-right" x-text="formatCurrency(row.credit)"></td>
+                                            <td class="p-4 text-right font-semibold" x-text="formatCurrency(row.balance)"></td>
+                                        </tr>
+                                    </template>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <div class="glass rounded-2xl overflow-hidden">
+                        <div class="p-5 border-b border-zinc-800">
+                            <h3 class="font-bold">Ringkasan Aset Neto</h3>
+                        </div>
+                        <div class="divide-y divide-zinc-800">
+                            <template x-for="fund in reportData.netAssetSummary" :key="fund.fund_id">
+                                <div class="p-5 flex items-center justify-between gap-4">
+                                    <div>
+                                        <p class="font-semibold" x-text="fund.name"></p>
+                                        <p class="text-xs text-zinc-500" x-text="fund.restriction_type"></p>
+                                    </div>
+                                    <p class="font-bold" x-text="formatCurrency(fund.balance)"></p>
+                                </div>
+                            </template>
+                        </div>
+                    </div>
+                </div>
+                <div class="grid grid-cols-1 xl:grid-cols-2 gap-6">
+                    <div class="glass rounded-2xl overflow-hidden">
+                        <div class="p-5 border-b border-zinc-800">
+                            <h3 class="font-bold">Laporan Arus Kas</h3>
+                        </div>
+                        <div class="divide-y divide-zinc-800">
+                            <div class="p-5 flex items-center justify-between"><span>Aktivitas Operasi</span><strong x-text="formatCurrency(reportData.cashFlow.operasi)"></strong></div>
+                            <div class="p-5 flex items-center justify-between"><span>Aktivitas Investasi</span><strong x-text="formatCurrency(reportData.cashFlow.investasi)"></strong></div>
+                            <div class="p-5 flex items-center justify-between"><span>Aktivitas Pendanaan</span><strong x-text="formatCurrency(reportData.cashFlow.pendanaan)"></strong></div>
+                        </div>
+                    </div>
+                    <div class="glass rounded-2xl overflow-hidden">
+                        <div class="p-5 border-b border-zinc-800">
+                            <h3 class="font-bold">CaLK Dasar</h3>
+                        </div>
+                        <div class="p-5 space-y-3 text-sm text-zinc-400">
+                            <p x-text="reportData.notes.accountingPolicy"></p>
+                            <p>Akun aktif: <span class="text-white font-semibold" x-text="reportData.notes.accountCount"></span></p>
+                            <p>Dana aktif: <span class="text-white font-semibold" x-text="reportData.notes.activeFundCount"></span></p>
+                            <p>Jurnal posted: <span class="text-white font-semibold" x-text="reportData.notes.postedJournalCount"></span></p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Settings View -->
+            <div x-show="view === 'settings'" class="animate-in">
+                <div class="max-w-2xl space-y-6">
+                    <div class="glass p-8 rounded-3xl">
+                        <h3 class="text-xl font-bold mb-6 flex items-center gap-2"><i data-lucide="school" class="w-5 h-5 text-primary"></i>Profil Pesantren</h3>
+                        <div class="space-y-4">
+                            <div>
+                                <label class="block text-sm font-medium text-zinc-400 mb-2">Nama Pesantren</label>
+                                <div class="flex gap-2">
+                                    <input type="text" x-model="settings.school_name" class="flex-1 bg-zinc-900 border border-zinc-800 rounded-xl px-4 py-2.5 outline-none focus:border-primary">
+                                    <button @click="saveSetting('school_name', settings.school_name)" class="bg-primary px-4 py-2 rounded-xl text-sm font-bold">Simpan</button>
+                                </div>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-zinc-400 mb-2">Logo Sekolah</label>
+                                <div class="flex items-center gap-6 p-4 bg-zinc-900/50 border border-zinc-800 border-dashed rounded-2xl">
+                                    <div class="w-20 h-20 bg-zinc-800 rounded-xl flex items-center justify-center overflow-hidden border border-zinc-700">
+                                        <template x-if="settings.logo_url">
+                                            <img :src="settings.logo_url" class="w-full h-full object-contain">
+                                        </template>
+                                        <template x-if="!settings.logo_url">
+                                            <i data-lucide="image" class="w-8 h-8 text-zinc-600"></i>
+                                        </template>
+                                    </div>
+                                    <div class="flex-1">
+                                        <input type="file" @change="handleLogoUpload" class="block w-full text-sm text-zinc-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-bold file:bg-primary/10 file:text-primary hover:file:bg-primary/20 cursor-pointer">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>

@@ -44,7 +44,8 @@ Provider QRIS nyata belum dipaksa aktif. Struktur adapter sudah disiapkan agar p
 - `Accounting.gs`: master akuntansi, posting jurnal, audit log, dan neraca saldo.
 - `Reports.gs`: data laporan PAP dasar.
 - `Settings.gs`: pengaturan aplikasi dan upload logo.
-- `Index.html`: frontend Alpine.js + Tailwind CSS.
+- `Index.html`: shell frontend yang merakit partial HTML.
+- `AppHead.html`, `AppState.html`, `MainApp.html`, dan partial modal/view pendukung: modul frontend Alpine.js + Tailwind CSS.
 
 ## Setup Singkat
 
@@ -80,6 +81,7 @@ Script Properties yang tersedia:
 - Spesifikasi teknis: `docs/TECHNICAL_SPEC.md`
 - Deployment: `docs/DEPLOYMENT_GUIDE.md`
 - Roadmap PAP: `docs/ROADMAP_PAP.md`
+- Plan operasional pondok: `docs/PRODUCT_PLAN_OPERASIONAL.md`
 - Riwayat perubahan: `CHANGELOG.md`
 
 ## Catatan Keamanan

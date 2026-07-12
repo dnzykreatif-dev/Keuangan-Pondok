@@ -1,0 +1,369 @@
+<script>
+    function app() {
+        return {
+            isLoggedIn: false,
+            loading: false,
+            mobileMenuOpen: false,
+            toasts: [],
+            view: 'dashboard',
+            user: {},
+            auth: { username: '', password: '' },
+            stats: { totalRevenue: 0, totalArrears: 0, activeSantriCount: 0 },
+            settings: { school_name: '', logo_url: '' },
+            santriList: [],
+            arrearsList: [],
+            journalEntries: [],
+            paymentOrders: [],
+            reportData: {
+                summary: { totalDebit: 0, totalCredit: 0, isBalanced: true, cashBank: 0, sppReceivable: 0 },
+                trialBalance: [],
+                netAssetSummary: [],
+                financialPosition: { totalAssets: 0, totalLiabilities: 0, totalNetAssets: 0 },
+                cashFlow: { operasi: 0, investasi: 0, pendanaan: 0, total: 0 },
+                notes: { materialAccounts: [] }
+            },
+            selectedClassFilter: '',
+            unpaidBills: [],
+            showAddSantriModal: false,
+            showPaymentModal: false,
+            selectedSantri: null,
+            newSantri: { nama: '', kelas: '', kontak_ortu: '' },
+            genBill: { month: 'Januari', year: new Date().getFullYear(), nominal: 500000 },
+            paymentData: { id_santri: '', id_billing: '', amount: 0, method: 'Cash', proofBase64: '', penerima: '' },
+
+            init() {
+                const savedUser = localStorage.getItem('spp_user');
+                if (savedUser) {
+                    this.user = JSON.parse(savedUser);
+                    this.isLoggedIn = true;
+                    this.fetchDashboard();
+                }
+
+                this.fetchSettings();
+                this.refreshIcons();
+            },
+
+            refreshIcons() {
+                this.$nextTick(() => { lucide.createIcons(); });
+            },
+
+            fetchSettings() {
+                google.script.run
+                    .withSuccessHandler(res => { if(res.ok) this.settings = { ...this.settings, ...res.data }; })
+                    .getAppSettings();
+            },
+
+            notify(message, type = 'success') {
+                const id = Date.now();
+                this.toasts.push({ id, message, type, show: true });
+                setTimeout(() => {
+                    const toast = this.toasts.find(t => t.id === id);
+                    if (toast) toast.show = false;
+                }, 3000);
+            },
+
+            handleLogin() {
+                this.loading = true;
+                google.script.run
+                    .withSuccessHandler(res => {
+                        this.loading = false;
+                        this.refreshIcons();
+                        if (res.ok) {
+                            this.isLoggedIn = true;
+                            this.user = res.user;
+                            localStorage.setItem('spp_user', JSON.stringify(res.user));
+                            this.notify("Selamat datang kembali!");
+                            this.fetchDashboard();
+                        } else {
+                            this.notify(res.message, 'error');
+                        }
+                    })
+                    .withFailureHandler(err => {
+                        this.loading = false;
+                        this.notify(err.message, 'error');
+                    })
+                    .login(this.auth.username, this.auth.password);
+            },
+
+            fetchDashboard() {
+                google.script.run
+                    .withSuccessHandler(res => { if(res.ok) this.stats = res.data.stats; })
+                    .getDashboardData();
+            },
+
+            fetchSantri() {
+                this.loading = true;
+                google.script.run
+                    .withSuccessHandler(res => {
+                        this.loading = false;
+                        if (res.ok) {
+                            this.santriList = res.data;
+                        } else {
+                            this.notify(res.message, 'error');
+                        }
+                        this.refreshIcons();
+                    })
+                    .withFailureHandler(err => {
+                        this.loading = false;
+                        this.notify(err.message, 'error');
+                    })
+                    .getSantriList();
+            },
+
+            fetchArrears() {
+                this.loading = true;
+                google.script.run
+                    .withSuccessHandler(res => {
+                        this.loading = false;
+                        if (res.ok) {
+                            this.arrearsList = res.data;
+                            this.selectedClassFilter = '';
+                        } else {
+                            this.notify(res.message, 'error');
+                        }
+                        this.refreshIcons();
+                    })
+                    .withFailureHandler(err => {
+                        this.loading = false;
+                        this.notify(err.message, 'error');
+                    })
+                    .getArrearsRecap();
+            },
+
+            fetchJournals() {
+                this.loading = true;
+                google.script.run
+                    .withSuccessHandler(res => {
+                        this.loading = false;
+                        if (res.ok) {
+                            this.journalEntries = res.data;
+                        } else {
+                            this.notify(res.message, 'error');
+                        }
+                        this.refreshIcons();
+                    })
+                    .withFailureHandler(err => {
+                        this.loading = false;
+                        this.notify(err.message, 'error');
+                    })
+                    .getJournalSummaries(50);
+            },
+
+            fetchReports() {
+                this.loading = true;
+                google.script.run
+                    .withSuccessHandler(res => {
+                        this.loading = false;
+                        if (res.ok) {
+                            this.reportData = res.data;
+                        } else {
+                            this.notify(res.message, 'error');
+                        }
+                        this.refreshIcons();
+                    })
+                    .withFailureHandler(err => {
+                        this.loading = false;
+                        this.notify(err.message, 'error');
+                    })
+                    .getAccountingReportData();
+            },
+
+            fetchPaymentOrders() {
+                this.loading = true;
+                google.script.run
+                    .withSuccessHandler(res => {
+                        this.loading = false;
+                        if (res.ok) {
+                            this.paymentOrders = res.data;
+                        } else {
+                            this.notify(res.message, 'error');
+                        }
+                        this.refreshIcons();
+                    })
+                    .withFailureHandler(err => {
+                        this.loading = false;
+                        this.notify(err.message, 'error');
+                    })
+                    .getPaymentOrders(50);
+            },
+
+            get uniqueClasses() {
+                const classes = this.arrearsList.map(a => a.kelas);
+                return [...new Set(classes)].sort();
+            },
+
+            getFilteredArrears() {
+                if (!this.selectedClassFilter) return this.arrearsList;
+                return this.arrearsList.filter(a => a.kelas === this.selectedClassFilter);
+            },
+
+            handleAddSantri() {
+                if(!this.newSantri.nama) return this.notify("Nama wajib diisi", "error");
+                this.loading = true;
+                google.script.run
+                    .withSuccessHandler(res => {
+                        this.loading = false;
+                        this.showAddSantriModal = false;
+                        this.notify(res.message);
+                        this.fetchSantri();
+                        this.newSantri = { nama: '', kelas: '', kontak_ortu: '' };
+                    })
+                    .withFailureHandler(err => {
+                        this.loading = false;
+                        this.notify(err.message, 'error');
+                    })
+                    .addSantri(this.newSantri);
+            },
+
+            openPaymentModal(santri) {
+                this.selectedSantri = santri;
+                this.paymentData.id_santri = santri.id_santri;
+                this.paymentData.penerima = this.user.username;
+                this.loading = true;
+                google.script.run
+                    .withSuccessHandler(res => {
+                        this.loading = false;
+                        this.unpaidBills = res.data;
+                        this.showPaymentModal = true;
+                        this.refreshIcons();
+                    })
+                    .withFailureHandler(err => {
+                        this.loading = false;
+                        this.notify(err.message, 'error');
+                    })
+                    .getUnpaidBills(santri.id_santri);
+            },
+
+            handleFileUpload(e) {
+                const file = e.target.files[0];
+                if(!file) return;
+                const reader = new FileReader();
+                reader.onload = (f) => { this.paymentData.proofBase64 = f.target.result; };
+                reader.readAsDataURL(file);
+            },
+
+            handleProcessPayment() {
+                if(!this.paymentData.id_billing) return this.notify("Pilih tagihan!", "error");
+
+                const bill = this.unpaidBills.find(b => b.id_billing === this.paymentData.id_billing);
+                if(!bill) return this.notify("Tagihan tidak ditemukan", "error");
+
+                this.paymentData.amount = bill.nominal;
+                this.loading = true;
+
+                google.script.run
+                    .withSuccessHandler(res => {
+                        this.loading = false;
+                        if (res.ok) {
+                            if (res.payment_url) window.open(res.payment_url, '_blank');
+                            this.notify(res.payment_url ? "Payment order QRIS dibuat" : "QRIS mock dibuat. Cek menu Pembayaran QRIS.");
+                            this.showPaymentModal = false;
+                            this.fetchDashboard();
+                            this.fetchPaymentOrders();
+                        } else {
+                            this.notify(res.message, 'error');
+                        }
+                    })
+                    .withFailureHandler(err => {
+                        this.loading = false;
+                        this.notify(err.message, 'error');
+                    })
+                    .createPaymentOrder(this.paymentData);
+            },
+
+            handleGenerateBills() {
+                if(!confirm("Generate tagihan untuk semua santri aktif?")) return this.notify("Konfirmasi diperlukan", "error");
+                this.loading = true;
+                google.script.run
+                    .withSuccessHandler(res => {
+                        this.loading = false;
+                        this.notify(res.message);
+                        this.fetchDashboard();
+                    })
+                    .withFailureHandler(err => {
+                        this.loading = false;
+                        this.notify(err.message, 'error');
+                    })
+                    .generateMonthlyBills(this.genBill.month, this.genBill.year, this.genBill.nominal);
+            },
+
+            sendPaymentLink(santri) {
+                this.loading = true;
+                google.script.run
+                    .withSuccessHandler(res => {
+                        this.loading = false;
+                        if (!res.ok) return this.notify(res.message, 'error');
+                        const paymentLink = res.redirect_url || res.link;
+                        const msg = `Assalamu'alaikum Wr. Wb.\n\nMohon Bapak/Ibu melakukan pembayaran tagihan an. *${santri.nama}* melalui QRIS/link resmi berikut:\n\n${paymentLink || res.qr_string}\n\nTerima kasih.`;
+                        const waUrl = `https://wa.me/${santri.kontak_ortu}?text=${encodeURIComponent(msg)}`;
+                        window.open(waUrl, '_blank');
+                        this.notify("Link pembayaran dikirim ke WA");
+                    })
+                    .withFailureHandler(err => {
+                        this.loading = false;
+                        this.notify(err.message, 'error');
+                    })
+                    .generatePaymentLink(santri.id_santri);
+            },
+
+            saveSetting(key, value) {
+                this.loading = true;
+                google.script.run
+                    .withSuccessHandler(() => {
+                        this.loading = false;
+                        this.notify("Pengaturan disimpan");
+                    })
+                    .withFailureHandler(err => {
+                        this.loading = false;
+                        this.notify(err.message, 'error');
+                    })
+                    .updateAppSetting(key, value);
+            },
+
+            handleLogoUpload(e) {
+                const file = e.target.files[0];
+                if (!file) return;
+                this.loading = true;
+                const reader = new FileReader();
+                reader.onload = (f) => {
+                    google.script.run
+                        .withSuccessHandler(res => {
+                            this.loading = false;
+                            this.settings.logo_url = res.url;
+                            this.notify("Logo berhasil diperbarui");
+                            this.refreshIcons();
+                        })
+                        .withFailureHandler(err => {
+                            this.loading = false;
+                            this.notify(err.message, 'error');
+                        })
+                        .saveSchoolLogo(f.target.result);
+                };
+                reader.readAsDataURL(file);
+            },
+
+            viewTitle() {
+                const titles = { 'dashboard': 'Overview', 'santri': 'Data Santri', 'billing': 'Tagihan', 'arrears': 'Rekap Tunggakan', 'payments': 'Pembayaran QRIS', 'journals': 'Jurnal', 'reports': 'Laporan', 'settings': 'Pengaturan' };
+                return titles[this.view];
+            },
+
+            formatCurrency(val) {
+                return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(val);
+            },
+
+            formatDate(val) {
+                if (!val) return '-';
+                return new Intl.DateTimeFormat('id-ID', { day: '2-digit', month: 'short', year: 'numeric' }).format(new Date(val));
+            },
+
+            logout() {
+                localStorage.removeItem('spp_user');
+                this.isLoggedIn = false;
+                this.user = {};
+                this.auth = { username: '', password: '' };
+                this.refreshIcons();
+                this.notify("Anda telah keluar");
+            },
+        }
+    }
+</script>

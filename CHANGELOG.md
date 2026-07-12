@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.3.1 - Frontend Modularization and Operational Product Plan
+
+- Menambahkan `docs/PRODUCT_PLAN_OPERASIONAL.md` sebagai rencana pengembangan aplikasi operasional pondok.
+- Memecah `Index.html` menjadi partial Apps Script: `AppHead.html`, `AppState.html`, `AppOverlays.html`, `LoginView.html`, `MainApp.html`, `PaymentModal.html`, dan `AddSantriModal.html`.
+- Menjadikan `Index.html` sebagai shell komposisi agar pengembangan menu Pengeluaran, Donasi, Kas, dan Dana Pembangunan lebih mudah.
+- Memperbarui dokumentasi teknis dan README sesuai struktur frontend modular.
+
 ## 0.3.0 - QRIS Adapter and PAP Expansion
 
 - Menghapus integrasi pembayaran lama dan menggantinya dengan payment order QRIS berbasis adapter provider.

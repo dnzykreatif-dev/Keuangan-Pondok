@@ -2,7 +2,20 @@
 
 ## Arsitektur
 
-Aplikasi memakai Google Apps Script sebagai backend, Google Spreadsheet sebagai penyimpanan data, dan `Index.html` sebagai frontend Alpine.js. Semua data operasional dan akuntansi disimpan di sheet agar bendahara tetap bisa audit manual jika diperlukan.
+Aplikasi memakai Google Apps Script sebagai backend, Google Spreadsheet sebagai penyimpanan data, dan frontend Alpine.js yang dirakit dari partial HTML Apps Script. Semua data operasional dan akuntansi disimpan di sheet agar bendahara tetap bisa audit manual jika diperlukan.
+
+## Struktur Frontend
+
+- `Index.html`: shell utama yang memanggil partial.
+- `AppHead.html`: meta tag, library CDN, style global, dan konfigurasi Tailwind.
+- `AppState.html`: state Alpine, action frontend, formatter, dan pemanggilan `google.script.run`.
+- `AppOverlays.html`: loading overlay dan toast.
+- `LoginView.html`: layar login.
+- `MainApp.html`: layout aplikasi dan view utama saat ini.
+- `PaymentModal.html`: modal pembuatan payment order.
+- `AddSantriModal.html`: modal tambah santri.
+
+Pola ini mengikuti `include(filename)` di `Code.gs`, sehingga partial baru bisa ditambahkan tanpa memperbesar `Index.html`.
 
 ## Modul Backend
 

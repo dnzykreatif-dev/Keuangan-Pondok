@@ -1,0 +1,24 @@
+<!-- Add Santri Modal -->
+<div x-show="showAddSantriModal" x-cloak class="fixed inset-0 bg-black/80 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
+    <div class="glass p-8 rounded-2xl w-full max-w-md" @click.away="showAddSantriModal = false">
+        <h2 class="text-xl font-bold mb-6">Tambah Santri Baru</h2>
+        <div class="space-y-4">
+            <div>
+                <label class="block text-sm mb-1 text-zinc-400">Nama Lengkap</label>
+                <input type="text" x-model="newSantri.nama" class="w-full bg-zinc-900 border border-zinc-800 rounded-lg p-2.5 outline-none focus:ring-1 focus:ring-primary">
+            </div>
+            <div>
+                <label class="block text-sm mb-1 text-zinc-400">Kelas</label>
+                <input type="text" x-model="newSantri.kelas" class="w-full bg-zinc-800 rounded-lg p-2.5 outline-none focus:ring-1 focus:ring-primary">
+            </div>
+            <div>
+                <label class="block text-sm mb-1 text-zinc-400">WhatsApp Ortu (62xxx)</label>
+                <input type="text" x-model="newSantri.kontak_ortu" class="w-full bg-zinc-900 border border-zinc-800 rounded-lg p-2.5 outline-none focus:ring-s-1 focus:ring-primary">
+            </div>
+            <div class="flex gap-4 mt-6">
+                <button @click="showAddSantriModal = false" class="flex-1 bg-zinc-800 py-3 rounded-lg">Batal</button>
+                <button @click="handleAddSantri" class="flex-1 bg-primary py-3 rounded-lg font-semibold">Simpan</button>
+            </div>
+        </div>
+    </div>
+</div>
