@@ -1,0 +1,42 @@
+<div x-show="view === 'development'" class="animate-in space-y-6">
+    <div class="grid grid-cols-1 xl:grid-cols-3 gap-6">
+        <div class="glass p-6 rounded-2xl">
+            <h3 class="font-bold mb-5">Tambah Proyek Pembangunan</h3>
+            <div class="space-y-4">
+                <input type="text" x-model="newProject.name" placeholder="Nama proyek, contoh: Asrama Baru" class="w-full bg-zinc-900 border border-zinc-800 rounded-lg p-2.5">
+                <input type="number" x-model="newProject.target_budget" placeholder="Target anggaran" class="w-full bg-zinc-900 border border-zinc-800 rounded-lg p-2.5">
+                <div class="grid grid-cols-2 gap-3">
+                    <input type="date" x-model="newProject.start_date" class="bg-zinc-900 border border-zinc-800 rounded-lg p-2.5">
+                    <input type="date" x-model="newProject.end_date" class="bg-zinc-900 border border-zinc-800 rounded-lg p-2.5">
+                </div>
+                <select x-model="newProject.status" class="w-full bg-zinc-900 border border-zinc-800 rounded-lg p-2.5"><option>Aktif</option><option>Selesai</option><option>Ditunda</option></select>
+                <textarea x-model="newProject.description" placeholder="Keterangan proyek" class="w-full bg-zinc-900 border border-zinc-800 rounded-lg p-2.5"></textarea>
+                <button @click="handleAddProject" class="w-full bg-primary py-3 rounded-lg font-semibold">Simpan Proyek</button>
+            </div>
+        </div>
+        <div class="xl:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-4">
+            <template x-for="project in developmentProjects" :key="project.project_id">
+                <div class="glass p-5 rounded-2xl space-y-4">
+                    <div class="flex items-start justify-between gap-3">
+                        <div>
+                            <h3 class="font-bold" x-text="project.name"></h3>
+                            <p class="text-xs text-zinc-500" x-text="project.status"></p>
+                        </div>
+                        <span class="text-xs px-2 py-1 rounded bg-primary/20 text-primary" x-text="project.progress_percent + '%'"></span>
+                    </div>
+                    <div class="h-3 bg-zinc-900 rounded-full overflow-hidden">
+                        <div class="h-full bg-success" :style="'width:' + project.progress_percent + '%'"></div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-3 text-sm">
+                        <div><p class="text-zinc-500">Target</p><strong x-text="formatCurrency(project.target_budget)"></strong></div>
+                        <div><p class="text-zinc-500">Terkumpul</p><strong class="text-success" x-text="formatCurrency(project.collected)"></strong></div>
+                        <div><p class="text-zinc-500">Terpakai</p><strong class="text-danger" x-text="formatCurrency(project.used)"></strong></div>
+                        <div><p class="text-zinc-500">Sisa Target</p><strong x-text="formatCurrency(project.remaining_to_target)"></strong></div>
+                    </div>
+                    <p class="text-sm text-zinc-500" x-text="project.description || 'Belum ada keterangan.'"></p>
+                </div>
+            </template>
+            <div x-show="developmentProjects.length === 0" class="glass p-6 rounded-2xl text-sm text-zinc-500">Belum ada proyek pembangunan.</div>
+        </div>
+    </div>
+</div>

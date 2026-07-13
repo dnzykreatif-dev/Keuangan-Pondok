@@ -1,0 +1,44 @@
+<div x-show="view === 'cash'" class="animate-in space-y-6">
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div class="glass p-5 rounded-2xl border-l-4 border-l-success">
+            <p class="text-xs uppercase tracking-widest text-zinc-500 font-bold">Kas Masuk</p>
+            <h3 class="text-2xl font-bold mt-3" x-text="formatCurrency(operationalReport.cash.totalIn)"></h3>
+        </div>
+        <div class="glass p-5 rounded-2xl border-l-4 border-l-danger">
+            <p class="text-xs uppercase tracking-widest text-zinc-500 font-bold">Kas Keluar</p>
+            <h3 class="text-2xl font-bold mt-3" x-text="formatCurrency(operationalReport.cash.totalOut)"></h3>
+        </div>
+        <div class="glass p-5 rounded-2xl border-l-4 border-l-primary">
+            <p class="text-xs uppercase tracking-widest text-zinc-500 font-bold">Saldo Kas</p>
+            <h3 class="text-2xl font-bold mt-3" x-text="formatCurrency(operationalReport.cash.balance)"></h3>
+        </div>
+    </div>
+
+    <div class="glass rounded-2xl overflow-hidden">
+        <div class="p-5 border-b border-zinc-800 flex items-center justify-between">
+            <h3 class="font-bold">Buku Kas Sederhana</h3>
+            <button @click="fetchCash(); fetchOperationalReports()" class="bg-zinc-800 hover:bg-zinc-700 px-4 py-2 rounded-lg text-sm font-semibold flex items-center gap-2">
+                <i data-lucide="refresh-cw" class="w-4 h-4"></i>Refresh
+            </button>
+        </div>
+        <div class="overflow-x-auto">
+            <table class="w-full text-left">
+                <thead class="bg-zinc-900/50 text-zinc-400 text-xs uppercase">
+                    <tr><th class="p-4">Tanggal</th><th class="p-4">Keterangan</th><th class="p-4 text-right">Masuk</th><th class="p-4 text-right">Keluar</th><th class="p-4">Metode</th></tr>
+                </thead>
+                <tbody class="divide-y divide-zinc-800">
+                    <template x-for="row in cashTransactions" :key="row.cash_id">
+                        <tr>
+                            <td class="p-4" x-text="formatDate(row.date)"></td>
+                            <td class="p-4"><p class="font-semibold" x-text="row.description || row.source_type"></p><p class="text-xs text-zinc-500" x-text="row.source_type + ' / ' + row.source_id"></p></td>
+                            <td class="p-4 text-right text-success" x-text="row.direction === 'Masuk' ? formatCurrency(row.amount) : '-'"></td>
+                            <td class="p-4 text-right text-danger" x-text="row.direction === 'Keluar' ? formatCurrency(row.amount) : '-'"></td>
+                            <td class="p-4" x-text="row.method"></td>
+                        </tr>
+                    </template>
+                    <tr x-show="cashTransactions.length === 0"><td colspan="5" class="p-6 text-center text-sm text-zinc-500">Belum ada transaksi kas.</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>

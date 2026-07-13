@@ -1,0 +1,37 @@
+<div x-show="view === 'payments'" class="animate-in space-y-6">
+    <div class="flex flex-col sm:flex-row justify-between gap-4">
+        <div>
+            <h2 class="text-xl font-bold">Pembayaran</h2>
+            <p class="text-sm text-zinc-500 mt-1">Catat Tunai, Transfer, atau buat QRIS untuk tagihan SPP.</p>
+        </div>
+        <button @click="fetchPaymentOrders" class="bg-zinc-800 hover:bg-zinc-700 px-4 py-2 rounded-lg text-sm font-semibold flex items-center gap-2">
+            <i data-lucide="refresh-cw" class="w-4 h-4"></i>Refresh QRIS
+        </button>
+    </div>
+    <div class="glass p-5 rounded-2xl">
+        <p class="text-sm text-zinc-400">Untuk mencatat pembayaran, buka menu <strong class="text-white">Data Santri</strong>, pilih santri, lalu klik <strong class="text-white">Bayar</strong>. Modal pembayaran menyediakan metode Tunai, Transfer, dan QRIS.</p>
+    </div>
+    <div class="glass rounded-2xl overflow-hidden">
+        <div class="p-5 border-b border-zinc-800"><h3 class="font-bold">Riwayat Order QRIS</h3></div>
+        <div class="overflow-x-auto">
+            <table class="w-full text-left">
+                <thead class="bg-zinc-900/50 text-zinc-400 text-xs uppercase">
+                    <tr><th class="p-4">Tanggal</th><th class="p-4">Order</th><th class="p-4">Provider</th><th class="p-4 text-right">Nominal</th><th class="p-4">Status</th><th class="p-4">Link/QR</th></tr>
+                </thead>
+                <tbody class="divide-y divide-zinc-800">
+                    <template x-for="order in paymentOrders" :key="order.order_id">
+                        <tr class="hover:bg-zinc-800/50 transition-colors">
+                            <td class="p-4 text-zinc-400 whitespace-nowrap" x-text="formatDate(order.created_at)"></td>
+                            <td class="p-4 text-xs text-zinc-500" x-text="order.order_id"></td>
+                            <td class="p-4 font-semibold" x-text="order.provider_id"></td>
+                            <td class="p-4 text-right" x-text="formatCurrency(order.amount)"></td>
+                            <td class="p-4"><span class="px-2 py-1 rounded text-xs font-semibold" :class="String(order.status).toUpperCase() === 'PAID' ? 'bg-success/20 text-success' : 'bg-primary/20 text-primary'" x-text="order.status"></span></td>
+                            <td class="p-4"><a x-show="order.payment_url" :href="order.payment_url" target="_blank" class="text-primary hover:underline text-sm font-semibold">Buka</a><span x-show="!order.payment_url" class="text-xs text-zinc-500" x-text="order.qr_string || '-'"></span></td>
+                        </tr>
+                    </template>
+                    <tr x-show="paymentOrders.length === 0"><td colspan="6" class="p-6 text-center text-sm text-zinc-500">Belum ada order QRIS.</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>

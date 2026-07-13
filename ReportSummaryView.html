@@ -1,0 +1,48 @@
+<div x-show="view === 'reports'" class="animate-in space-y-6">
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div class="glass p-5 rounded-2xl">
+            <p class="text-xs uppercase tracking-widest text-zinc-500 font-bold">SPP Lunas</p>
+            <h3 class="text-2xl font-bold mt-3" x-text="operationalReport.spp.paidPercentage + '%'"></h3>
+            <p class="text-xs text-zinc-500 mt-2" x-text="operationalReport.spp.paid + ' dari ' + operationalReport.spp.total + ' tagihan'"></p>
+        </div>
+        <div class="glass p-5 rounded-2xl">
+            <p class="text-xs uppercase tracking-widest text-zinc-500 font-bold">Tunggakan SPP</p>
+            <h3 class="text-2xl font-bold mt-3 text-danger" x-text="formatCurrency(operationalReport.spp.unpaidAmount)"></h3>
+        </div>
+        <div class="glass p-5 rounded-2xl">
+            <p class="text-xs uppercase tracking-widest text-zinc-500 font-bold">Donasi Masuk</p>
+            <h3 class="text-2xl font-bold mt-3 text-success" x-text="formatCurrency(operationalReport.donations.totalReceived)"></h3>
+        </div>
+        <div class="glass p-5 rounded-2xl">
+            <p class="text-xs uppercase tracking-widest text-zinc-500 font-bold">Total Pengeluaran</p>
+            <h3 class="text-2xl font-bold mt-3 text-danger" x-text="formatCurrency(operationalReport.expenses.total)"></h3>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 xl:grid-cols-3 gap-6">
+        <div class="glass rounded-2xl overflow-hidden">
+            <div class="p-5 border-b border-zinc-800"><h3 class="font-bold">Pengeluaran per Kategori</h3></div>
+            <div class="divide-y divide-zinc-800">
+                <template x-for="row in operationalReport.expenses.byCategory" :key="row.category">
+                    <div class="p-4 flex items-center justify-between"><span x-text="row.category"></span><strong class="text-danger" x-text="formatCurrency(row.amount)"></strong></div>
+                </template>
+            </div>
+        </div>
+        <div class="glass rounded-2xl overflow-hidden">
+            <div class="p-5 border-b border-zinc-800"><h3 class="font-bold">Donatur Terbesar</h3></div>
+            <div class="divide-y divide-zinc-800">
+                <template x-for="donor in operationalReport.donations.topDonors" :key="donor.name">
+                    <div class="p-4 flex items-center justify-between"><span x-text="donor.name"></span><strong class="text-success" x-text="formatCurrency(donor.amount)"></strong></div>
+                </template>
+            </div>
+        </div>
+        <div class="glass rounded-2xl overflow-hidden">
+            <div class="p-5 border-b border-zinc-800"><h3 class="font-bold">Arus Kas</h3></div>
+            <div class="divide-y divide-zinc-800">
+                <div class="p-4 flex items-center justify-between"><span>Masuk</span><strong class="text-success" x-text="formatCurrency(operationalReport.cash.totalIn)"></strong></div>
+                <div class="p-4 flex items-center justify-between"><span>Keluar</span><strong class="text-danger" x-text="formatCurrency(operationalReport.cash.totalOut)"></strong></div>
+                <div class="p-4 flex items-center justify-between"><span>Saldo</span><strong x-text="formatCurrency(operationalReport.cash.balance)"></strong></div>
+            </div>
+        </div>
+    </div>
+</div>

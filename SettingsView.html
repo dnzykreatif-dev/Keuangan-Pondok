@@ -1,0 +1,31 @@
+<div x-show="view === 'settings'" class="animate-in">
+    <div class="max-w-2xl space-y-6">
+        <div class="glass p-8 rounded-3xl">
+            <h3 class="text-xl font-bold mb-6 flex items-center gap-2"><i data-lucide="school" class="w-5 h-5 text-primary"></i>Profil Pesantren</h3>
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-zinc-400 mb-2">Nama Pesantren</label>
+                    <div class="flex gap-2">
+                        <input type="text" x-model="settings.school_name" class="flex-1 bg-zinc-900 border border-zinc-800 rounded-xl px-4 py-2.5 outline-none focus:border-primary">
+                        <button @click="saveSetting('school_name', settings.school_name)" class="bg-primary px-4 py-2 rounded-xl text-sm font-bold">Simpan</button>
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-zinc-400 mb-2">Logo Sekolah</label>
+                    <div class="flex items-center gap-6 p-4 bg-zinc-900/50 border border-zinc-800 border-dashed rounded-2xl">
+                        <div class="w-20 h-20 bg-zinc-800 rounded-xl flex items-center justify-center overflow-hidden border border-zinc-700">
+                            <template x-if="settings.logo_url"><img :src="settings.logo_url" class="w-full h-full object-contain"></template>
+                            <template x-if="!settings.logo_url"><i data-lucide="image" class="w-8 h-8 text-zinc-600"></i></template>
+                        </div>
+                        <div class="flex-1">
+                            <input type="file" @change="handleLogoUpload" class="block w-full text-sm text-zinc-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-bold file:bg-primary/10 file:text-primary hover:file:bg-primary/20 cursor-pointer">
+                        </div>
+                    </div>
+                </div>
+                <div class="p-4 bg-zinc-900/50 border border-zinc-800 rounded-2xl">
+                    <p class="text-sm text-zinc-400">Level 1 menampilkan operasional pondok. Jurnal dan laporan akuntansi tetap tersedia di `Mode Akuntansi` untuk Admin.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

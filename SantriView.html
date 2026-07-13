@@ -1,0 +1,58 @@
+<div x-show="view === 'santri'" class="animate-in space-y-6">
+    <div class="flex flex-col sm:flex-row justify-between gap-4">
+        <input type="text" placeholder="Cari santri..." class="bg-zinc-900 border border-zinc-800 rounded-lg px-4 py-2 w-full sm:w-64 outline-none focus:ring-1 focus:ring-primary">
+        <button @click="showAddSantriModal = true" class="bg-primary px-4 py-2 rounded-lg font-semibold whitespace-nowrap">+ Tambah Santri</button>
+    </div>
+    <div class="grid grid-cols-1 xl:grid-cols-3 gap-6">
+        <div class="xl:col-span-2 glass rounded-2xl overflow-hidden">
+            <div class="overflow-x-auto">
+                <table class="w-full text-left">
+                    <thead class="bg-zinc-900/50 text-zinc-400 text-xs uppercase">
+                        <tr><th class="p-4">ID</th><th class="p-4">Nama</th><th class="p-4">Kelas</th><th class="p-4">Status</th><th class="p-4">Aksi</th></tr>
+                    </thead>
+                    <tbody class="divide-y divide-zinc-800">
+                        <template x-for="s in santriList" :key="s.id_santri">
+                            <tr class="hover:bg-zinc-800/50 transition-colors">
+                                <td class="p-4 text-zinc-400" x-text="s.id_santri"></td>
+                                <td class="p-4 font-semibold" x-text="s.nama"></td>
+                                <td class="p-4" x-text="s.kelas"></td>
+                                <td class="p-4"><span class="px-2 py-1 rounded text-xs" :class="s.status === 'Aktif' ? 'bg-success/20 text-success' : 'bg-zinc-800 text-zinc-400'" x-text="s.status"></span></td>
+                                <td class="p-4 flex flex-wrap gap-3">
+                                    <button @click="openStudentProfile(s)" class="text-zinc-300 hover:text-white text-sm font-semibold">Detail</button>
+                                    <button @click="openPaymentModal(s)" class="text-primary hover:underline text-sm font-semibold">Bayar</button>
+                                    <button @click="sendPaymentLink(s)" class="text-success hover:underline text-sm font-semibold">Kirim QRIS</button>
+                                </td>
+                            </tr>
+                        </template>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        <div class="glass rounded-2xl p-6">
+            <h3 class="font-bold mb-4">Riwayat Pembayaran</h3>
+            <template x-if="!selectedStudentProfile">
+                <p class="text-sm text-zinc-500">Klik `Detail` pada santri untuk melihat riwayat pembayaran dan tunggakan.</p>
+            </template>
+            <template x-if="selectedStudentProfile">
+                <div class="space-y-4">
+                    <div>
+                        <p class="text-lg font-bold" x-text="selectedStudentProfile.student.nama"></p>
+                        <p class="text-sm text-zinc-500" x-text="selectedStudentProfile.student.kelas"></p>
+                    </div>
+                    <div class="p-4 bg-danger/10 border border-danger/20 rounded-xl">
+                        <p class="text-xs uppercase tracking-widest text-zinc-500">Total Tunggakan</p>
+                        <p class="text-xl font-bold text-danger mt-1" x-text="formatCurrency(selectedStudentProfile.totalArrears)"></p>
+                    </div>
+                    <div class="space-y-2 max-h-80 overflow-y-auto pr-1">
+                        <template x-for="bill in selectedStudentProfile.bills" :key="bill.id_billing">
+                            <div class="flex items-center justify-between border-b border-zinc-800 pb-2">
+                                <span x-text="bill.bulan + ' ' + bill.tahun"></span>
+                                <span class="text-sm font-semibold" :class="bill.status === 'Lunas' ? 'text-success' : 'text-danger'" x-text="bill.status === 'Lunas' ? 'Lunas' : 'Belum'"></span>
+                            </div>
+                        </template>
+                    </div>
+                </div>
+            </template>
+        </div>
+    </div>
+</div>

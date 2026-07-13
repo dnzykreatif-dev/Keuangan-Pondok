@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.4.0 - Operational Finance Level 1
+
+- Menambahkan modul operasional Level 1: Pengeluaran, Donasi, Kas, Dana Pembangunan, dan Laporan Ringkas.
+- Mengubah dashboard menjadi dashboard operasional: saldo kas, pemasukan bulan ini, pengeluaran bulan ini, tunggakan SPP, donasi bulan ini, pemasukan vs pengeluaran, 5 pengeluaran terbesar, dan tagihan belum lunas.
+- Menambahkan sheet `cash_transactions`, `expenses`, `expense_categories`, `donations`, `donors`, dan `development_projects`.
+- Menambahkan backend `Operations.gs`, `Expenses.gs`, `Donations.gs`, dan `DevelopmentFunds.gs`.
+- Menambahkan pembayaran langsung `Tunai` dan `Transfer` melalui `recordDirectPayment()` selain QRIS mock/provider adapter.
+- Menambahkan detail profil keuangan santri melalui `getStudentFinanceProfile()`.
+- Mengubah generate tagihan agar bisa untuk semua kelas atau kelas tertentu.
+- Memecah UI utama menjadi partial view per menu: Dashboard, Santri, Tagihan, Pembayaran, Tunggakan, Pengeluaran, Donasi, Kas, Dana Pembangunan, Laporan Ringkas, Akuntansi Lanjutan, dan Pengaturan.
+- Menyembunyikan Jurnal dan Laporan Akuntansi dari navigasi utama ke `Mode Akuntansi` khusus Admin.
+
 ## 0.3.1 - Frontend Modularization and Operational Product Plan
 
 - Menambahkan `docs/PRODUCT_PLAN_OPERASIONAL.md` sebagai rencana pengembangan aplikasi operasional pondok.

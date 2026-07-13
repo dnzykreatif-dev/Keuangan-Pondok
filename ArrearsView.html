@@ -1,0 +1,32 @@
+<div x-show="view === 'arrears'" class="animate-in space-y-4">
+    <div class="flex flex-col sm:flex-row justify-between gap-4">
+        <div class="flex items-center gap-3">
+            <label class="text-sm font-medium text-zinc-400">Filter Kelas:</label>
+            <select x-model="selectedClassFilter" class="bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-primary">
+                <option value="">Semua Kelas</option>
+                <template x-for="cls in uniqueClasses" :key="cls"><option :value="cls" x-text="cls"></option></template>
+            </select>
+        </div>
+        <div class="text-sm text-zinc-500">Menampilkan <span class="text-white font-bold" x-text="getFilteredArrears().length"></span> tunggakan</div>
+    </div>
+    <div class="glass rounded-2xl overflow-hidden">
+        <div class="overflow-x-auto">
+            <table class="w-full text-left">
+                <thead class="bg-zinc-900/50 text-zinc-400 text-xs uppercase">
+                    <tr><th class="p-4">Nama</th><th class="p-4">Kelas</th><th class="p-4">Bulan/Tahun</th><th class="p-4 text-right">Nominal</th><th class="p-4">Aksi</th></tr>
+                </thead>
+                <tbody class="divide-y divide-zinc-800">
+                    <template x-for="a in getFilteredArrears()" :key="a.id_billing">
+                        <tr class="hover:bg-zinc-800/50 transition-colors">
+                            <td class="p-4 font-semibold" x-text="a.nama"></td>
+                            <td class="p-4" x-text="a.kelas"></td>
+                            <td class="p-4" x-text="a.bulan + ' ' + a.tahun"></td>
+                            <td class="p-4 text-right text-danger font-semibold" x-text="formatCurrency(a.nominal)"></td>
+                            <td class="p-4"><a :href="'https://wa.me/' + a.kontak + '?text=Assalamu%27alaikum%2C%20mohon%20segera%20melunasi%20SPP%20bulan%20' + a.bulan" target="_blank" class="bg-success/20 text-success px-3 py-1 rounded text-xs font-semibold">Remind WA</a></td>
+                        </tr>
+                    </template>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>

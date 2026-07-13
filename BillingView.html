@@ -1,0 +1,29 @@
+<div x-show="view === 'billing'" class="animate-in">
+    <div class="glass p-8 rounded-2xl max-w-2xl">
+        <h2 class="text-xl font-bold mb-2">Generate Tagihan SPP</h2>
+        <p class="text-sm text-zinc-500 mb-6">Buat tagihan untuk semua santri aktif atau kelas tertentu.</p>
+        <div class="space-y-4">
+            <div>
+                <label class="block text-sm mb-1 text-zinc-400">Bulan & Tahun</label>
+                <div class="grid grid-cols-2 gap-4">
+                    <select x-model="genBill.month" class="bg-zinc-900 border border-zinc-800 rounded-lg p-2.5 outline-none focus:ring-1 focus:ring-primary">
+                        <option value="Januari">Januari</option><option value="Februari">Februari</option><option value="Maret">Maret</option><option value="April">April</option><option value="Mei">Mei</option><option value="Juni">Juni</option><option value="Juli">Juli</option><option value="Agustus">Agustus</option><option value="September">September</option><option value="Oktober">Oktober</option><option value="November">November</option><option value="Desember">Desember</option>
+                    </select>
+                    <input type="number" x-model="genBill.year" class="bg-zinc-900 border border-zinc-800 rounded-lg p-2.5 outline-none focus:ring-1 focus:ring-primary">
+                </div>
+            </div>
+            <div>
+                <label class="block text-sm mb-1 text-zinc-400">Kelas</label>
+                <select x-model="genBill.classFilter" @focus="fetchSantri" class="w-full bg-zinc-900 border border-zinc-800 rounded-lg p-2.5 outline-none focus:ring-1 focus:ring-primary">
+                    <option value="ALL">Semua Kelas</option>
+                    <template x-for="cls in uniqueClasses" :key="cls"><option :value="cls" x-text="cls"></option></template>
+                </select>
+            </div>
+            <div>
+                <label class="block text-sm mb-1 text-zinc-400">Nominal (Rp)</label>
+                <input type="number" x-model="genBill.nominal" class="w-full bg-zinc-900 border border-zinc-800 rounded-lg p-2.5 outline-none focus:ring-1 focus:ring-primary">
+            </div>
+            <button @click="handleGenerateBills" class="w-full bg-primary py-3 rounded-lg font-semibold">Generate Tagihan</button>
+        </div>
+    </div>
+</div>

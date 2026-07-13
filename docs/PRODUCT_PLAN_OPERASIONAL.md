@@ -124,8 +124,16 @@ PENGATURAN
 
 ## Tahap Implementasi Berikutnya
 
-1. Modularisasi frontend agar setiap view bisa dikembangkan terpisah.
-2. Tambah schema dan backend untuk pengeluaran, donasi, kas, dan proyek pembangunan.
-3. Ubah dashboard menjadi operasional: kas, pemasukan, pengeluaran, tunggakan, donasi.
-4. Sembunyikan menu jurnal dari navigasi utama, tetapi pertahankan fungsi backend.
-5. Buat laporan ringkas yang mudah dibaca pengurus.
+1. Sempurnakan validasi dan pengalaman input pada modul Pengeluaran, Donasi, dan Dana Pembangunan.
+2. Tambahkan filter tanggal/bulan pada Laporan Ringkas.
+3. Tambahkan edit/hapus terbatas dengan audit log untuk transaksi operasional.
+4. Tambahkan hak akses Bendahara dan Viewer.
+5. Siapkan integrasi QRIS provider nyata setelah akun PJSP/merchant tersedia.
+
+## Status Implementasi 0.4.0
+
+- Modularisasi frontend per view sudah dilakukan.
+- Schema dan backend Pengeluaran, Donasi, Kas, dan Dana Pembangunan sudah tersedia.
+- Dashboard sudah memakai data operasional.
+- Jurnal dan Laporan Akuntansi disembunyikan di Mode Akuntansi Admin.
+- Laporan ringkas SPP, Donasi, Pengeluaran, dan Kas sudah tersedia.

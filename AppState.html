@@ -4,16 +4,30 @@
             isLoggedIn: false,
             loading: false,
             mobileMenuOpen: false,
+            showAdvancedAccounting: false,
             toasts: [],
             view: 'dashboard',
             user: {},
             auth: { username: '', password: '' },
-            stats: { totalRevenue: 0, totalArrears: 0, activeSantriCount: 0 },
+            stats: { cashBalance: 0, incomeThisMonth: 0, expenseThisMonth: 0, totalArrears: 0, donationThisMonth: 0, activeSantriCount: 0 },
+            dashboardData: { incomeVsExpense: [], topExpenses: [], unpaidBills: [] },
             settings: { school_name: '', logo_url: '' },
             santriList: [],
+            selectedStudentProfile: null,
             arrearsList: [],
             journalEntries: [],
             paymentOrders: [],
+            expenseCategories: [],
+            expenseList: [],
+            donationList: [],
+            cashTransactions: [],
+            developmentProjects: [],
+            operationalReport: {
+                spp: { total: 0, paid: 0, unpaid: 0, paidAmount: 0, unpaidAmount: 0, paidPercentage: 0 },
+                donations: { totalReceived: 0, pledged: 0, topDonors: [] },
+                expenses: { total: 0, byCategory: [] },
+                cash: { totalIn: 0, totalOut: 0, balance: 0, ledger: [] }
+            },
             reportData: {
                 summary: { totalDebit: 0, totalCredit: 0, isBalanced: true, cashBank: 0, sppReceivable: 0 },
                 trialBalance: [],
@@ -28,8 +42,11 @@
             showPaymentModal: false,
             selectedSantri: null,
             newSantri: { nama: '', kelas: '', kontak_ortu: '' },
-            genBill: { month: 'Januari', year: new Date().getFullYear(), nominal: 500000 },
-            paymentData: { id_santri: '', id_billing: '', amount: 0, method: 'Cash', proofBase64: '', penerima: '' },
+            genBill: { month: 'Januari', year: new Date().getFullYear(), nominal: 500000, classFilter: 'ALL' },
+            paymentData: { id_santri: '', id_billing: '', amount: 0, method: 'Tunai', proofBase64: '', penerima: '' },
+            newExpense: { date: new Date().toISOString().slice(0, 10), category: 'Dapur', amount: '', supplier: '', method: 'Tunai', description: '', proofBase64: '', project_id: '' },
+            newDonation: { date: new Date().toISOString().slice(0, 10), donor_name: '', phone: '', type: 'Donasi', status: 'Masuk', amount: '', method: 'Transfer', description: '', proofBase64: '', project_id: '' },
+            newProject: { name: '', target_budget: '', description: '', status: 'Aktif', start_date: new Date().toISOString().slice(0, 10), end_date: '' },
 
             init() {
                 const savedUser = localStorage.getItem('spp_user');
@@ -78,16 +95,23 @@
                             this.notify(res.message, 'error');
                         }
                     })
-                    .withFailureHandler(err => {
-                        this.loading = false;
-                        this.notify(err.message, 'error');
-                    })
+                    .withFailureHandler(err => this.handleFailure(err))
                     .login(this.auth.username, this.auth.password);
+            },
+
+            handleFailure(err) {
+                this.loading = false;
+                this.notify(err.message || err.toString(), 'error');
             },
 
             fetchDashboard() {
                 google.script.run
-                    .withSuccessHandler(res => { if(res.ok) this.stats = res.data.stats; })
+                    .withSuccessHandler(res => {
+                        if (res.ok) {
+                            this.stats = res.data.stats;
+                            this.dashboardData = res.data;
+                        }
+                    })
                     .getDashboardData();
             },
 
@@ -96,18 +120,25 @@
                 google.script.run
                     .withSuccessHandler(res => {
                         this.loading = false;
-                        if (res.ok) {
-                            this.santriList = res.data;
-                        } else {
-                            this.notify(res.message, 'error');
-                        }
+                        if (res.ok) this.santriList = res.data;
+                        else this.notify(res.message, 'error');
                         this.refreshIcons();
                     })
-                    .withFailureHandler(err => {
-                        this.loading = false;
-                        this.notify(err.message, 'error');
-                    })
+                    .withFailureHandler(err => this.handleFailure(err))
                     .getSantriList();
+            },
+
+            openStudentProfile(santri) {
+                this.selectedSantri = santri;
+                this.loading = true;
+                google.script.run
+                    .withSuccessHandler(res => {
+                        this.loading = false;
+                        if (res.ok) this.selectedStudentProfile = res.data;
+                        else this.notify(res.message, 'error');
+                    })
+                    .withFailureHandler(err => this.handleFailure(err))
+                    .getStudentFinanceProfile(santri.id_santri);
             },
 
             fetchArrears() {
@@ -123,11 +154,89 @@
                         }
                         this.refreshIcons();
                     })
-                    .withFailureHandler(err => {
-                        this.loading = false;
-                        this.notify(err.message, 'error');
-                    })
+                    .withFailureHandler(err => this.handleFailure(err))
                     .getArrearsRecap();
+            },
+
+            fetchPaymentOrders() {
+                this.loading = true;
+                google.script.run
+                    .withSuccessHandler(res => {
+                        this.loading = false;
+                        if (res.ok) this.paymentOrders = res.data;
+                        else this.notify(res.message, 'error');
+                        this.refreshIcons();
+                    })
+                    .withFailureHandler(err => this.handleFailure(err))
+                    .getPaymentOrders(50);
+            },
+
+            fetchExpenses() {
+                this.loading = true;
+                google.script.run
+                    .withSuccessHandler(res => {
+                        this.loading = false;
+                        if (res.ok) this.expenseList = res.data;
+                        else this.notify(res.message, 'error');
+                        this.refreshIcons();
+                    })
+                    .withFailureHandler(err => this.handleFailure(err))
+                    .getExpenses(100);
+                google.script.run.withSuccessHandler(res => { if(res.ok) this.expenseCategories = res.data; }).getExpenseCategories();
+                this.fetchDevelopmentProjects(false);
+            },
+
+            fetchDonations() {
+                this.loading = true;
+                google.script.run
+                    .withSuccessHandler(res => {
+                        this.loading = false;
+                        if (res.ok) this.donationList = res.data;
+                        else this.notify(res.message, 'error');
+                        this.refreshIcons();
+                    })
+                    .withFailureHandler(err => this.handleFailure(err))
+                    .getDonations(100);
+                this.fetchDevelopmentProjects(false);
+            },
+
+            fetchCash() {
+                this.loading = true;
+                google.script.run
+                    .withSuccessHandler(res => {
+                        this.loading = false;
+                        if (res.ok) this.cashTransactions = res.data;
+                        else this.notify(res.message, 'error');
+                        this.refreshIcons();
+                    })
+                    .withFailureHandler(err => this.handleFailure(err))
+                    .getCashTransactions(100);
+            },
+
+            fetchDevelopmentProjects(showLoading = true) {
+                if (showLoading) this.loading = true;
+                google.script.run
+                    .withSuccessHandler(res => {
+                        this.loading = false;
+                        if (res.ok) this.developmentProjects = res.data;
+                        else this.notify(res.message, 'error');
+                        this.refreshIcons();
+                    })
+                    .withFailureHandler(err => this.handleFailure(err))
+                    .getDevelopmentProjects();
+            },
+
+            fetchOperationalReports() {
+                this.loading = true;
+                google.script.run
+                    .withSuccessHandler(res => {
+                        this.loading = false;
+                        if (res.ok) this.operationalReport = res.data;
+                        else this.notify(res.message, 'error');
+                        this.refreshIcons();
+                    })
+                    .withFailureHandler(err => this.handleFailure(err))
+                    .getOperationalReportData();
             },
 
             fetchJournals() {
@@ -135,17 +244,11 @@
                 google.script.run
                     .withSuccessHandler(res => {
                         this.loading = false;
-                        if (res.ok) {
-                            this.journalEntries = res.data;
-                        } else {
-                            this.notify(res.message, 'error');
-                        }
+                        if (res.ok) this.journalEntries = res.data;
+                        else this.notify(res.message, 'error');
                         this.refreshIcons();
                     })
-                    .withFailureHandler(err => {
-                        this.loading = false;
-                        this.notify(err.message, 'error');
-                    })
+                    .withFailureHandler(err => this.handleFailure(err))
                     .getJournalSummaries(50);
             },
 
@@ -154,42 +257,17 @@
                 google.script.run
                     .withSuccessHandler(res => {
                         this.loading = false;
-                        if (res.ok) {
-                            this.reportData = res.data;
-                        } else {
-                            this.notify(res.message, 'error');
-                        }
+                        if (res.ok) this.reportData = res.data;
+                        else this.notify(res.message, 'error');
                         this.refreshIcons();
                     })
-                    .withFailureHandler(err => {
-                        this.loading = false;
-                        this.notify(err.message, 'error');
-                    })
+                    .withFailureHandler(err => this.handleFailure(err))
                     .getAccountingReportData();
             },
 
-            fetchPaymentOrders() {
-                this.loading = true;
-                google.script.run
-                    .withSuccessHandler(res => {
-                        this.loading = false;
-                        if (res.ok) {
-                            this.paymentOrders = res.data;
-                        } else {
-                            this.notify(res.message, 'error');
-                        }
-                        this.refreshIcons();
-                    })
-                    .withFailureHandler(err => {
-                        this.loading = false;
-                        this.notify(err.message, 'error');
-                    })
-                    .getPaymentOrders(50);
-            },
-
             get uniqueClasses() {
-                const classes = this.arrearsList.map(a => a.kelas);
-                return [...new Set(classes)].sort();
+                const source = this.arrearsList.length ? this.arrearsList : this.santriList;
+                return [...new Set(source.map(item => item.kelas).filter(Boolean))].sort();
             },
 
             getFilteredArrears() {
@@ -208,17 +286,13 @@
                         this.fetchSantri();
                         this.newSantri = { nama: '', kelas: '', kontak_ortu: '' };
                     })
-                    .withFailureHandler(err => {
-                        this.loading = false;
-                        this.notify(err.message, 'error');
-                    })
+                    .withFailureHandler(err => this.handleFailure(err))
                     .addSantri(this.newSantri);
             },
 
             openPaymentModal(santri) {
                 this.selectedSantri = santri;
-                this.paymentData.id_santri = santri.id_santri;
-                this.paymentData.penerima = this.user.username;
+                this.paymentData = { id_santri: santri.id_santri, id_billing: '', amount: 0, method: 'Tunai', proofBase64: '', penerima: this.user.username };
                 this.loading = true;
                 google.script.run
                     .withSuccessHandler(res => {
@@ -227,52 +301,50 @@
                         this.showPaymentModal = true;
                         this.refreshIcons();
                     })
-                    .withFailureHandler(err => {
-                        this.loading = false;
-                        this.notify(err.message, 'error');
-                    })
+                    .withFailureHandler(err => this.handleFailure(err))
                     .getUnpaidBills(santri.id_santri);
             },
 
-            handleFileUpload(e) {
+            handleFileUpload(e, target, field = 'proofBase64') {
                 const file = e.target.files[0];
                 if(!file) return;
                 const reader = new FileReader();
-                reader.onload = (f) => { this.paymentData.proofBase64 = f.target.result; };
+                reader.onload = (f) => { target[field] = f.target.result; };
                 reader.readAsDataURL(file);
             },
 
             handleProcessPayment() {
                 if(!this.paymentData.id_billing) return this.notify("Pilih tagihan!", "error");
-
                 const bill = this.unpaidBills.find(b => b.id_billing === this.paymentData.id_billing);
                 if(!bill) return this.notify("Tagihan tidak ditemukan", "error");
-
                 this.paymentData.amount = bill.nominal;
                 this.loading = true;
 
-                google.script.run
+                const runner = google.script.run
                     .withSuccessHandler(res => {
                         this.loading = false;
                         if (res.ok) {
                             if (res.payment_url) window.open(res.payment_url, '_blank');
-                            this.notify(res.payment_url ? "Payment order QRIS dibuat" : "QRIS mock dibuat. Cek menu Pembayaran QRIS.");
+                            this.notify(res.message || (this.paymentData.method === 'QRIS' ? "Payment order QRIS dibuat" : "Pembayaran berhasil dicatat"));
                             this.showPaymentModal = false;
                             this.fetchDashboard();
                             this.fetchPaymentOrders();
+                            if (this.view === 'santri') this.fetchSantri();
                         } else {
                             this.notify(res.message, 'error');
                         }
                     })
-                    .withFailureHandler(err => {
-                        this.loading = false;
-                        this.notify(err.message, 'error');
-                    })
-                    .createPaymentOrder(this.paymentData);
+                    .withFailureHandler(err => this.handleFailure(err));
+
+                if (this.paymentData.method === 'QRIS') {
+                    runner.createPaymentOrder(this.paymentData);
+                } else {
+                    runner.recordDirectPayment(this.paymentData);
+                }
             },
 
             handleGenerateBills() {
-                if(!confirm("Generate tagihan untuk semua santri aktif?")) return this.notify("Konfirmasi diperlukan", "error");
+                if(!confirm("Generate tagihan sesuai pilihan kelas?")) return this.notify("Konfirmasi diperlukan", "error");
                 this.loading = true;
                 google.script.run
                     .withSuccessHandler(res => {
@@ -280,11 +352,8 @@
                         this.notify(res.message);
                         this.fetchDashboard();
                     })
-                    .withFailureHandler(err => {
-                        this.loading = false;
-                        this.notify(err.message, 'error');
-                    })
-                    .generateMonthlyBills(this.genBill.month, this.genBill.year, this.genBill.nominal);
+                    .withFailureHandler(err => this.handleFailure(err))
+                    .generateMonthlyBills(this.genBill.month, this.genBill.year, this.genBill.nominal, this.genBill.classFilter);
             },
 
             sendPaymentLink(santri) {
@@ -299,11 +368,55 @@
                         window.open(waUrl, '_blank');
                         this.notify("Link pembayaran dikirim ke WA");
                     })
-                    .withFailureHandler(err => {
-                        this.loading = false;
-                        this.notify(err.message, 'error');
-                    })
+                    .withFailureHandler(err => this.handleFailure(err))
                     .generatePaymentLink(santri.id_santri);
+            },
+
+            handleAddExpense() {
+                this.loading = true;
+                google.script.run
+                    .withSuccessHandler(res => {
+                        this.loading = false;
+                        if (res.ok) {
+                            this.notify(res.message);
+                            this.newExpense = { date: new Date().toISOString().slice(0, 10), category: 'Dapur', amount: '', supplier: '', method: 'Tunai', description: '', proofBase64: '', project_id: '' };
+                            this.fetchExpenses();
+                            this.fetchDashboard();
+                        } else this.notify(res.message, 'error');
+                    })
+                    .withFailureHandler(err => this.handleFailure(err))
+                    .addExpense({ ...this.newExpense, created_by: this.user.username });
+            },
+
+            handleAddDonation() {
+                this.loading = true;
+                google.script.run
+                    .withSuccessHandler(res => {
+                        this.loading = false;
+                        if (res.ok) {
+                            this.notify(res.message);
+                            this.newDonation = { date: new Date().toISOString().slice(0, 10), donor_name: '', phone: '', type: 'Donasi', status: 'Masuk', amount: '', method: 'Transfer', description: '', proofBase64: '', project_id: '' };
+                            this.fetchDonations();
+                            this.fetchDashboard();
+                        } else this.notify(res.message, 'error');
+                    })
+                    .withFailureHandler(err => this.handleFailure(err))
+                    .addDonation({ ...this.newDonation, created_by: this.user.username });
+            },
+
+            handleAddProject() {
+                this.loading = true;
+                google.script.run
+                    .withSuccessHandler(res => {
+                        this.loading = false;
+                        if (res.ok) {
+                            this.notify(res.message);
+                            this.newProject = { name: '', target_budget: '', description: '', status: 'Aktif', start_date: new Date().toISOString().slice(0, 10), end_date: '' };
+                            this.fetchDevelopmentProjects();
+                        } else this.notify(res.message, 'error');
+                    })
+                    .withFailureHandler(err => this.handleFailure(err))
+                    .addDevelopmentProject({ ...this.newProject, created_by: this.user.username });
             },
 
             saveSetting(key, value) {
@@ -313,10 +426,7 @@
                         this.loading = false;
                         this.notify("Pengaturan disimpan");
                     })
-                    .withFailureHandler(err => {
-                        this.loading = false;
-                        this.notify(err.message, 'error');
-                    })
+                    .withFailureHandler(err => this.handleFailure(err))
                     .updateAppSetting(key, value);
             },
 
@@ -333,22 +443,52 @@
                             this.notify("Logo berhasil diperbarui");
                             this.refreshIcons();
                         })
-                        .withFailureHandler(err => {
-                            this.loading = false;
-                            this.notify(err.message, 'error');
-                        })
+                        .withFailureHandler(err => this.handleFailure(err))
                         .saveSchoolLogo(f.target.result);
                 };
                 reader.readAsDataURL(file);
             },
 
+            openView(viewName) {
+                this.view = viewName;
+                this.mobileMenuOpen = false;
+                if (viewName === 'santri') this.fetchSantri();
+                if (viewName === 'arrears') this.fetchArrears();
+                if (viewName === 'payments') this.fetchPaymentOrders();
+                if (viewName === 'expenses') this.fetchExpenses();
+                if (viewName === 'donations') this.fetchDonations();
+                if (viewName === 'cash') {
+                    this.fetchCash();
+                    this.fetchOperationalReports();
+                }
+                if (viewName === 'development') this.fetchDevelopmentProjects();
+                if (viewName === 'reports') this.fetchOperationalReports();
+                if (viewName === 'journals') this.fetchJournals();
+                if (viewName === 'accountingReports') this.fetchReports();
+                this.refreshIcons();
+            },
+
             viewTitle() {
-                const titles = { 'dashboard': 'Overview', 'santri': 'Data Santri', 'billing': 'Tagihan', 'arrears': 'Rekap Tunggakan', 'payments': 'Pembayaran QRIS', 'journals': 'Jurnal', 'reports': 'Laporan', 'settings': 'Pengaturan' };
-                return titles[this.view];
+                const titles = {
+                    dashboard: 'Dashboard',
+                    santri: 'Data Santri',
+                    billing: 'Tagihan SPP',
+                    payments: 'Pembayaran',
+                    arrears: 'Tunggakan',
+                    expenses: 'Pengeluaran',
+                    donations: 'Donasi',
+                    cash: 'Kas',
+                    development: 'Dana Pembangunan',
+                    reports: 'Laporan Ringkas',
+                    journals: 'Jurnal',
+                    accountingReports: 'Laporan Akuntansi',
+                    settings: 'Pengaturan'
+                };
+                return titles[this.view] || 'Keuangan Pondok';
             },
 
             formatCurrency(val) {
-                return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(val);
+                return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(val || 0);
             },
 
             formatDate(val) {

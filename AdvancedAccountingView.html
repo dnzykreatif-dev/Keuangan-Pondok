@@ -1,0 +1,38 @@
+<div x-show="view === 'journals'" class="animate-in space-y-4">
+    <div class="flex flex-col sm:flex-row justify-between gap-4">
+        <div>
+            <h2 class="text-xl font-bold">Jurnal Otomatis</h2>
+            <p class="text-sm text-zinc-500 mt-1">Mode akuntansi lanjutan untuk admin.</p>
+        </div>
+        <button @click="fetchJournals" class="bg-zinc-800 hover:bg-zinc-700 px-4 py-2 rounded-lg text-sm font-semibold flex items-center gap-2"><i data-lucide="refresh-cw" class="w-4 h-4"></i>Refresh</button>
+    </div>
+    <div class="glass rounded-2xl overflow-hidden">
+        <div class="overflow-x-auto">
+            <table class="w-full text-left">
+                <thead class="bg-zinc-900/50 text-zinc-400 text-xs uppercase"><tr><th class="p-4">Tanggal</th><th class="p-4">No. Jurnal</th><th class="p-4">Deskripsi</th><th class="p-4">Sumber</th><th class="p-4 text-right">Debit</th><th class="p-4 text-right">Kredit</th><th class="p-4">Status</th></tr></thead>
+                <tbody class="divide-y divide-zinc-800">
+                    <template x-for="j in journalEntries" :key="j.journal_id">
+                        <tr><td class="p-4" x-text="formatDate(j.date)"></td><td class="p-4 text-xs text-zinc-500" x-text="j.journal_id"></td><td class="p-4 font-semibold" x-text="j.description"></td><td class="p-4 text-zinc-400" x-text="j.source_type + ' / ' + j.source_id"></td><td class="p-4 text-right" x-text="formatCurrency(j.total_debit)"></td><td class="p-4 text-right" x-text="formatCurrency(j.total_credit)"></td><td class="p-4"><span class="px-2 py-1 rounded text-xs font-semibold" :class="j.is_balance ? 'bg-success/20 text-success' : 'bg-danger/20 text-danger'" x-text="j.is_balance ? 'Balance' : 'Tidak Balance'"></span></td></tr>
+                    </template>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<div x-show="view === 'accountingReports'" class="animate-in space-y-6">
+    <div class="flex justify-between gap-4">
+        <div><h2 class="text-xl font-bold">Laporan Akuntansi</h2><p class="text-sm text-zinc-500 mt-1">Neraca saldo dan ringkasan aset neto untuk tahap lanjutan.</p></div>
+        <button @click="fetchReports" class="bg-zinc-800 hover:bg-zinc-700 px-4 py-2 rounded-lg text-sm font-semibold flex items-center gap-2"><i data-lucide="refresh-cw" class="w-4 h-4"></i>Refresh</button>
+    </div>
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div class="glass p-5 rounded-2xl"><p class="text-xs uppercase tracking-widest text-zinc-500 font-bold">Kas/Bank</p><h3 class="text-2xl font-bold mt-3" x-text="formatCurrency(reportData.summary.cashBank)"></h3></div>
+        <div class="glass p-5 rounded-2xl"><p class="text-xs uppercase tracking-widest text-zinc-500 font-bold">Piutang SPP</p><h3 class="text-2xl font-bold mt-3" x-text="formatCurrency(reportData.summary.sppReceivable)"></h3></div>
+        <div class="glass p-5 rounded-2xl"><p class="text-xs uppercase tracking-widest text-zinc-500 font-bold">Debit</p><h3 class="text-2xl font-bold mt-3" x-text="formatCurrency(reportData.summary.totalDebit)"></h3></div>
+        <div class="glass p-5 rounded-2xl"><p class="text-xs uppercase tracking-widest text-zinc-500 font-bold">Kredit</p><h3 class="text-2xl font-bold mt-3" x-text="formatCurrency(reportData.summary.totalCredit)"></h3></div>
+    </div>
+    <div class="glass rounded-2xl overflow-hidden">
+        <div class="p-5 border-b border-zinc-800"><h3 class="font-bold">Neraca Saldo</h3></div>
+        <div class="overflow-x-auto"><table class="w-full text-left"><thead class="bg-zinc-900/50 text-zinc-400 text-xs uppercase"><tr><th class="p-4">Akun</th><th class="p-4 text-right">Debit</th><th class="p-4 text-right">Kredit</th><th class="p-4 text-right">Saldo</th></tr></thead><tbody class="divide-y divide-zinc-800"><template x-for="row in reportData.trialBalance" :key="row.account_id"><tr><td class="p-4"><p class="font-semibold" x-text="row.code + ' - ' + row.name"></p><p class="text-xs text-zinc-500" x-text="row.type"></p></td><td class="p-4 text-right" x-text="formatCurrency(row.debit)"></td><td class="p-4 text-right" x-text="formatCurrency(row.credit)"></td><td class="p-4 text-right font-semibold" x-text="formatCurrency(row.balance)"></td></tr></template></tbody></table></div>
+    </div>
+</div>

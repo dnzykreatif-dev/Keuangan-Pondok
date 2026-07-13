@@ -1,0 +1,68 @@
+<aside :class="mobileMenuOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'"
+       class="fixed inset-y-0 left-0 z-50 w-72 glass border-r border-zinc-800 p-6 flex flex-col transition-transform duration-300 md:relative">
+    <div class="flex items-center gap-3 mb-8">
+        <template x-if="settings.logo_url">
+            <img :src="settings.logo_url" class="w-10 h-10 object-contain rounded-lg">
+        </template>
+        <template x-if="!settings.logo_url">
+            <div class="w-10 h-10 bg-primary rounded-lg flex items-center justify-center">
+                <i data-lucide="graduation-cap" class="w-6 h-6 text-white"></i>
+            </div>
+        </template>
+        <h2 class="text-xl font-bold tracking-tight truncate" x-text="settings.school_name || 'Keuangan Pondok'"></h2>
+    </div>
+
+    <nav class="space-y-5 flex-1 overflow-y-auto pr-1">
+        <div>
+            <button @click="openView('dashboard')" :class="view === 'dashboard' ? 'sidebar-item-active' : 'text-zinc-400 hover:bg-zinc-800/50 hover:text-white'" class="w-full text-left px-4 py-3 rounded-xl flex items-center gap-3 transition-all">
+                <i data-lucide="layout-dashboard" class="w-5 h-5"></i>
+                <span class="font-medium">Dashboard</span>
+            </button>
+        </div>
+
+        <div class="space-y-1.5">
+            <p class="px-4 text-[10px] font-bold uppercase tracking-widest text-zinc-600">Santri</p>
+            <button @click="openView('santri')" :class="view === 'santri' ? 'sidebar-item-active' : 'text-zinc-400 hover:bg-zinc-800/50 hover:text-white'" class="w-full text-left px-4 py-2.5 rounded-xl flex items-center gap-3 transition-all"><i data-lucide="users" class="w-5 h-5"></i><span>Data Santri</span></button>
+            <button @click="openView('billing')" :class="view === 'billing' ? 'sidebar-item-active' : 'text-zinc-400 hover:bg-zinc-800/50 hover:text-white'" class="w-full text-left px-4 py-2.5 rounded-xl flex items-center gap-3 transition-all"><i data-lucide="file-text" class="w-5 h-5"></i><span>Tagihan SPP</span></button>
+            <button @click="openView('payments')" :class="view === 'payments' ? 'sidebar-item-active' : 'text-zinc-400 hover:bg-zinc-800/50 hover:text-white'" class="w-full text-left px-4 py-2.5 rounded-xl flex items-center gap-3 transition-all"><i data-lucide="credit-card" class="w-5 h-5"></i><span>Pembayaran</span></button>
+            <button @click="openView('arrears')" :class="view === 'arrears' ? 'sidebar-item-active' : 'text-zinc-400 hover:bg-zinc-800/50 hover:text-white'" class="w-full text-left px-4 py-2.5 rounded-xl flex items-center gap-3 transition-all"><i data-lucide="clock" class="w-5 h-5"></i><span>Tunggakan</span></button>
+        </div>
+
+        <div class="space-y-1.5">
+            <p class="px-4 text-[10px] font-bold uppercase tracking-widest text-zinc-600">Keuangan</p>
+            <button @click="openView('expenses')" :class="view === 'expenses' ? 'sidebar-item-active' : 'text-zinc-400 hover:bg-zinc-800/50 hover:text-white'" class="w-full text-left px-4 py-2.5 rounded-xl flex items-center gap-3 transition-all"><i data-lucide="receipt" class="w-5 h-5"></i><span>Pengeluaran</span></button>
+            <button @click="openView('donations')" :class="view === 'donations' ? 'sidebar-item-active' : 'text-zinc-400 hover:bg-zinc-800/50 hover:text-white'" class="w-full text-left px-4 py-2.5 rounded-xl flex items-center gap-3 transition-all"><i data-lucide="hand-heart" class="w-5 h-5"></i><span>Donasi</span></button>
+            <button @click="openView('cash')" :class="view === 'cash' ? 'sidebar-item-active' : 'text-zinc-400 hover:bg-zinc-800/50 hover:text-white'" class="w-full text-left px-4 py-2.5 rounded-xl flex items-center gap-3 transition-all"><i data-lucide="wallet" class="w-5 h-5"></i><span>Kas</span></button>
+            <button @click="openView('development')" :class="view === 'development' ? 'sidebar-item-active' : 'text-zinc-400 hover:bg-zinc-800/50 hover:text-white'" class="w-full text-left px-4 py-2.5 rounded-xl flex items-center gap-3 transition-all"><i data-lucide="landmark" class="w-5 h-5"></i><span>Dana Pembangunan</span></button>
+        </div>
+
+        <div class="space-y-1.5">
+            <p class="px-4 text-[10px] font-bold uppercase tracking-widest text-zinc-600">Laporan</p>
+            <button @click="openView('reports')" :class="view === 'reports' ? 'sidebar-item-active' : 'text-zinc-400 hover:bg-zinc-800/50 hover:text-white'" class="w-full text-left px-4 py-2.5 rounded-xl flex items-center gap-3 transition-all"><i data-lucide="bar-chart-3" class="w-5 h-5"></i><span>Ringkasan</span></button>
+        </div>
+
+        <div class="space-y-1.5">
+            <p class="px-4 text-[10px] font-bold uppercase tracking-widest text-zinc-600">Pengaturan</p>
+            <button @click="openView('settings')" :class="view === 'settings' ? 'sidebar-item-active' : 'text-zinc-400 hover:bg-zinc-800/50 hover:text-white'" class="w-full text-left px-4 py-2.5 rounded-xl flex items-center gap-3 transition-all"><i data-lucide="settings" class="w-5 h-5"></i><span>Pengaturan</span></button>
+            <button x-show="user.role === 'Admin'" @click="showAdvancedAccounting = !showAdvancedAccounting" class="w-full text-left px-4 py-2.5 rounded-xl flex items-center gap-3 text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800/50 transition-all"><i data-lucide="shield" class="w-5 h-5"></i><span>Mode Akuntansi</span></button>
+            <div x-show="showAdvancedAccounting" class="pl-4 space-y-1">
+                <button @click="openView('journals')" :class="view === 'journals' ? 'sidebar-item-active' : 'text-zinc-500 hover:text-zinc-300'" class="w-full text-left px-4 py-2 rounded-lg text-sm">Jurnal</button>
+                <button @click="openView('accountingReports')" :class="view === 'accountingReports' ? 'sidebar-item-active' : 'text-zinc-500 hover:text-zinc-300'" class="w-full text-left px-4 py-2 rounded-lg text-sm">Laporan Akuntansi</button>
+            </div>
+        </div>
+    </nav>
+
+    <div class="pt-6 border-t border-zinc-800">
+        <div class="flex items-center gap-3 px-4 py-3 mb-4">
+            <div class="w-8 h-8 rounded-full bg-zinc-800 flex items-center justify-center text-xs font-bold" x-text="user.username?.charAt(0).toUpperCase()"></div>
+            <div class="overflow-hidden">
+                <p class="text-sm font-medium truncate" x-text="user.username"></p>
+                <p class="text-xs text-zinc-500 truncate" x-text="user.role"></p>
+            </div>
+        </div>
+        <button @click="logout" class="w-full text-zinc-500 hover:text-danger px-4 py-2 rounded-lg flex items-center gap-3 transition-colors">
+            <i data-lucide="log-out" class="w-4 h-4"></i>
+            <span class="text-sm font-medium">Logout</span>
+        </button>
+    </div>
+</aside>

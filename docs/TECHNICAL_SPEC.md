@@ -19,8 +19,12 @@ Pola ini mengikuti `include(filename)` di `Code.gs`, sehingga partial baru bisa 
 
 ## Modul Backend
 
-- `Billing.gs`: membuat tagihan, rekap tunggakan, dan dashboard.
-- `Payment.gs`: membuat payment order QRIS, menjalankan adapter provider, menerima callback, mencatat event, dan melakukan rekonsiliasi.
+- `Billing.gs`: membuat tagihan semua santri atau per kelas dan rekap tunggakan.
+- `Payment.gs`: mencatat pembayaran Tunai/Transfer, membuat payment order QRIS, menjalankan adapter provider, menerima callback, mencatat event, dan melakukan rekonsiliasi.
+- `Operations.gs`: setup operasional, buku kas, dashboard operasional, dan laporan ringkas.
+- `Expenses.gs`: pengeluaran harian, kategori pengeluaran, kas keluar, dan posting jurnal beban.
+- `Donations.gs`: donatur, donasi/infaq/wakaf/hibah/bantuan, janji donasi, kas masuk, dan posting jurnal.
+- `DevelopmentFunds.gs`: proyek pembangunan, target anggaran, dana terkumpul, dana terpakai, dan sisa target.
 - `Accounting.gs`: memvalidasi jurnal balance, posting double-entry, menyimpan audit log, dan menyediakan neraca saldo.
 - `Reports.gs`: menyusun data laporan PAP dasar dari jurnal.
 
@@ -34,6 +38,12 @@ Pola ini mengikuti `include(filename)` di `Code.gs`, sehingga partial baru bisa 
 - `payment_orders`: order pembayaran per tagihan.
 - `payment_events`: callback dan aktivitas payment order.
 - `reconciliation_logs`: log rekonsiliasi payment ke billing dan jurnal.
+- `cash_transactions`: buku kas operasional dari pembayaran, donasi, pengeluaran, dan sumber lain.
+- `expenses`: pengeluaran harian.
+- `expense_categories`: kategori pengeluaran awal.
+- `donations`: donasi, infaq, wakaf, hibah, bantuan, dan janji donasi.
+- `donors`: master donatur sederhana.
+- `development_projects`: proyek dana pembangunan.
 - `accounts`: chart of accounts pesantren.
 - `funds`: dana tidak terikat, terikat sementara, dan terikat permanen.
 - `units`: unit pesantren dan unit usaha.
@@ -78,7 +88,9 @@ Semua jurnal wajib balance. Akun yang dipakai harus aktif.
 Posting otomatis:
 
 - Tagihan SPP: debit `Piutang SPP`, kredit `Pendapatan SPP`.
+- Pembayaran Tunai/Transfer: debit `Kas/Bank`, kredit `Piutang SPP`.
 - Pembayaran QRIS: debit `Kas/Bank`, kredit `Piutang SPP`.
+- Pengeluaran: debit akun beban kategori, kredit `Kas/Bank`.
 - Donasi: debit `Kas/Bank`, kredit `Penerimaan Infaq/Donasi`.
 - Wakaf: debit aset/kas, kredit `Penerimaan Wakaf`.
 - Aset: debit `Aset Tetap`, kredit `Kas/Bank`.
@@ -87,6 +99,13 @@ Posting otomatis:
 - Bisaroh: debit `Beban Bisaroh/Gaji`, kredit `Kas/Bank`.
 
 ## Laporan
+
+`getOperationalReportData()` mengembalikan:
+
+- Ringkasan SPP: jumlah tagihan, lunas, belum lunas, nominal lunas, nominal belum lunas, dan persentase.
+- Ringkasan donasi: total masuk, total janji, dan donatur terbesar.
+- Ringkasan pengeluaran: total dan kelompok kategori.
+- Ringkasan kas: total masuk, total keluar, saldo, dan ledger kas.
 
 `getAccountingReportData()` mengembalikan:
 

@@ -331,6 +331,7 @@ function verifyDuitkuCallback(payload) {
 
 function completePaidOrder(order, normalized, providerName) {
   const amount = normalizeNumber(normalized.amount || order.amount);
+  const billing = getSheetData('billings').find(item => item.id_billing === order.id_billing) || {};
   markBillingAsPaid(order.id_billing);
   updateTransactionStatus(order.order_id, 'PAID');
   updateSheetRowByKey('payment_orders', 'order_id', order.order_id, {
@@ -338,8 +339,74 @@ function completePaidOrder(order, normalized, providerName) {
     provider_reference: normalized.provider_reference || order.provider_reference,
     paid_at: new Date()
   });
+  if (!cashTransactionExists('payment', order.order_id)) {
+    recordCashTransaction({
+      direction: 'Masuk',
+      source_type: 'payment',
+      source_id: order.order_id,
+      amount,
+      method: providerName || 'QRIS',
+      description: `Pembayaran SPP ${order.id_billing}`,
+      fund_id: billing.fund_id || getDefaultFundId(),
+      unit_id: billing.unit_id || getDefaultUnitId(),
+      program_id: billing.program_id || getDefaultProgramId(),
+      created_by: providerName || 'QRIS'
+    });
+  }
   const journalResult = postPaymentJournal(order.order_id, order.id_billing, amount, providerName || 'QRIS');
   recordReconciliationLog(order, 'PAID', journalResult.skipped ? 'Jurnal pembayaran sudah pernah dibuat' : 'Jurnal pembayaran dibuat');
+}
+
+function recordDirectPayment(payment) {
+  try {
+    seedOperationalDefaults();
+
+    const method = normalizeText(payment.method);
+    if (['Tunai', 'Transfer'].indexOf(method) === -1) {
+      throw new Error('Pembayaran langsung hanya mendukung Tunai atau Transfer');
+    }
+
+    const bill = getSheetData('billings').find(item => item.id_billing === payment.id_billing);
+    if (!bill) throw new Error('Tagihan tidak ditemukan');
+    if (bill.status === 'Lunas') throw new Error('Tagihan sudah lunas');
+
+    const amount = normalizeNumber(payment.amount || bill.nominal);
+    if (amount <= 0) throw new Error('Nominal pembayaran harus lebih dari nol');
+
+    const paymentId = generateId('PAYCASH');
+    const proofUrl = saveOptionalProof(payment.proofBase64, paymentId);
+    const actor = payment.penerima || payment.created_by || 'System';
+
+    markBillingAsPaid(bill.id_billing);
+    appendObjectRow('transactions', {
+      id_transaksi: paymentId,
+      id_santri: bill.id_santri,
+      id_billing: bill.id_billing,
+      tanggal: new Date(),
+      jumlah_bayar: amount,
+      metode: method,
+      status: 'PAID',
+      penerima: actor
+    });
+    recordCashTransaction({
+      direction: 'Masuk',
+      source_type: 'payment',
+      source_id: paymentId,
+      amount,
+      method,
+      description: `Pembayaran SPP ${bill.bulan} ${bill.tahun}`,
+      proof_url: proofUrl,
+      fund_id: bill.fund_id || getDefaultFundId(),
+      unit_id: bill.unit_id || getDefaultUnitId(),
+      program_id: bill.program_id || getDefaultProgramId(),
+      created_by: actor
+    });
+    postPaymentJournal(paymentId, bill.id_billing, amount, method);
+
+    return { ok: true, message: 'Pembayaran berhasil dicatat', data: { payment_id: paymentId } };
+  } catch (error) {
+    return { ok: false, message: error.toString() };
+  }
 }
 
 function handlePaymentCallback(payload) {

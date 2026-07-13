@@ -5,6 +5,7 @@ function setupDatabase() {
 
   seedAccountingDefaults();
   seedPaymentDefaults();
+  seedOperationalDefaults();
 
   const userSheet = getSheetOrThrow('users');
   if (userSheet.getLastRow() === 1) {

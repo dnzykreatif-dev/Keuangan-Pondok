@@ -1,0 +1,39 @@
+<div x-show="view === 'donations'" class="animate-in space-y-6">
+    <div class="grid grid-cols-1 xl:grid-cols-3 gap-6">
+        <div class="glass p-6 rounded-2xl">
+            <h3 class="font-bold mb-5">Tambah Donasi</h3>
+            <div class="space-y-4">
+                <input type="date" x-model="newDonation.date" class="w-full bg-zinc-900 border border-zinc-800 rounded-lg p-2.5">
+                <input type="text" x-model="newDonation.donor_name" placeholder="Nama Donatur" class="w-full bg-zinc-900 border border-zinc-800 rounded-lg p-2.5">
+                <input type="text" x-model="newDonation.phone" placeholder="No. HP" class="w-full bg-zinc-900 border border-zinc-800 rounded-lg p-2.5">
+                <div class="grid grid-cols-2 gap-3">
+                    <select x-model="newDonation.type" class="bg-zinc-900 border border-zinc-800 rounded-lg p-2.5"><option>Wakaf</option><option>Donasi</option><option>Infaq</option><option>Hibah</option><option>Bantuan Pemerintah</option></select>
+                    <select x-model="newDonation.status" class="bg-zinc-900 border border-zinc-800 rounded-lg p-2.5"><option>Masuk</option><option>Janji</option></select>
+                </div>
+                <input type="number" x-model="newDonation.amount" placeholder="Nominal" class="w-full bg-zinc-900 border border-zinc-800 rounded-lg p-2.5">
+                <select x-model="newDonation.method" class="w-full bg-zinc-900 border border-zinc-800 rounded-lg p-2.5"><option>Transfer</option><option>Tunai</option><option>QRIS</option></select>
+                <select x-model="newDonation.project_id" class="w-full bg-zinc-900 border border-zinc-800 rounded-lg p-2.5">
+                    <option value="">Tidak terkait proyek</option>
+                    <template x-for="project in developmentProjects" :key="project.project_id"><option :value="project.project_id" x-text="project.name"></option></template>
+                </select>
+                <textarea x-model="newDonation.description" placeholder="Keterangan" class="w-full bg-zinc-900 border border-zinc-800 rounded-lg p-2.5"></textarea>
+                <input type="file" @change="handleFileUpload($event, newDonation)" class="block w-full text-sm text-zinc-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-bold file:bg-primary/10 file:text-primary">
+                <button @click="handleAddDonation" class="w-full bg-primary py-3 rounded-lg font-semibold">Simpan Donasi</button>
+            </div>
+        </div>
+        <div class="xl:col-span-2 glass rounded-2xl overflow-hidden">
+            <div class="p-5 border-b border-zinc-800"><h3 class="font-bold">Riwayat Donasi</h3></div>
+            <div class="overflow-x-auto">
+                <table class="w-full text-left">
+                    <thead class="bg-zinc-900/50 text-zinc-400 text-xs uppercase"><tr><th class="p-4">Tanggal</th><th class="p-4">Donatur</th><th class="p-4">Jenis</th><th class="p-4">Status</th><th class="p-4 text-right">Nominal</th></tr></thead>
+                    <tbody class="divide-y divide-zinc-800">
+                        <template x-for="donation in donationList" :key="donation.donation_id">
+                            <tr><td class="p-4" x-text="formatDate(donation.date)"></td><td class="p-4 font-semibold" x-text="donation.donor_name"></td><td class="p-4" x-text="donation.type"></td><td class="p-4"><span class="px-2 py-1 rounded text-xs font-semibold" :class="donation.status === 'Masuk' ? 'bg-success/20 text-success' : 'bg-primary/20 text-primary'" x-text="donation.status"></span></td><td class="p-4 text-right text-success" x-text="formatCurrency(donation.amount)"></td></tr>
+                        </template>
+                        <tr x-show="donationList.length === 0"><td colspan="5" class="p-6 text-center text-sm text-zinc-500">Belum ada donasi.</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>

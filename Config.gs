@@ -23,7 +23,13 @@ const SHEET_HEADERS = Object.freeze({
   payment_providers: ['provider_id', 'name', 'type', 'status', 'mode', 'base_url', 'secret_property', 'is_active'],
   payment_orders: ['order_id', 'provider_id', 'source_type', 'source_id', 'id_santri', 'id_billing', 'amount', 'currency', 'status', 'payment_url', 'qr_string', 'provider_reference', 'expires_at', 'created_at', 'created_by', 'paid_at'],
   payment_events: ['event_id', 'order_id', 'provider_id', 'event_type', 'status', 'payload', 'created_at'],
-  reconciliation_logs: ['log_id', 'order_id', 'source_type', 'source_id', 'status', 'details', 'created_at']
+  reconciliation_logs: ['log_id', 'order_id', 'source_type', 'source_id', 'status', 'details', 'created_at'],
+  cash_transactions: ['cash_id', 'date', 'direction', 'source_type', 'source_id', 'amount', 'method', 'description', 'proof_url', 'project_id', 'fund_id', 'unit_id', 'program_id', 'created_at', 'created_by'],
+  expenses: ['expense_id', 'date', 'category', 'amount', 'supplier', 'method', 'description', 'proof_url', 'project_id', 'fund_id', 'unit_id', 'program_id', 'created_at', 'created_by'],
+  expense_categories: ['category_id', 'name', 'account_code', 'is_active'],
+  donations: ['donation_id', 'date', 'donor_id', 'donor_name', 'type', 'status', 'amount', 'method', 'description', 'proof_url', 'project_id', 'fund_id', 'unit_id', 'program_id', 'created_at', 'created_by'],
+  donors: ['donor_id', 'name', 'phone', 'address', 'created_at'],
+  development_projects: ['project_id', 'name', 'target_budget', 'description', 'status', 'start_date', 'end_date', 'created_at', 'created_by']
 });
 
 const MONTHS_ID = Object.freeze([
@@ -100,4 +106,17 @@ const DEFAULT_PROGRAMS = Object.freeze([
 const DEFAULT_PAYMENT_PROVIDERS = Object.freeze([
   ['MOCK_QRIS', 'Mock QRIS Dinamis', 'QRIS_MPM_DINAMIS', 'ACTIVE', 'sandbox', '', 'QRIS_CALLBACK_SECRET', true],
   ['DUITKU', 'Duitku QRIS', 'QRIS_MPM_DINAMIS', 'READY', 'sandbox', 'https://api-sandbox.duitku.com/api/merchant/createInvoice', 'DUITKU_CALLBACK_SECRET', true]
+]);
+
+const DEFAULT_EXPENSE_CATEGORIES = Object.freeze([
+  ['EXP_DAPUR', 'Dapur', DEFAULT_ACCOUNT_CODES.OPERATIONAL_EXPENSE, true],
+  ['EXP_PEMBANGUNAN', 'Pembangunan', DEFAULT_ACCOUNT_CODES.OPERATIONAL_EXPENSE, true],
+  ['EXP_GAJI', 'Gaji', DEFAULT_ACCOUNT_CODES.BISAROH_EXPENSE, true],
+  ['EXP_LISTRIK', 'Listrik', DEFAULT_ACCOUNT_CODES.OPERATIONAL_EXPENSE, true],
+  ['EXP_AIR', 'Air', DEFAULT_ACCOUNT_CODES.OPERATIONAL_EXPENSE, true],
+  ['EXP_INTERNET', 'Internet', DEFAULT_ACCOUNT_CODES.OPERATIONAL_EXPENSE, true],
+  ['EXP_TRANSPORTASI', 'Transportasi', DEFAULT_ACCOUNT_CODES.OPERATIONAL_EXPENSE, true],
+  ['EXP_KONSUMSI', 'Konsumsi', DEFAULT_ACCOUNT_CODES.OPERATIONAL_EXPENSE, true],
+  ['EXP_ATK', 'ATK', DEFAULT_ACCOUNT_CODES.OPERATIONAL_EXPENSE, true],
+  ['EXP_LAINNYA', 'Lainnya', DEFAULT_ACCOUNT_CODES.OPERATIONAL_EXPENSE, true]
 ]);

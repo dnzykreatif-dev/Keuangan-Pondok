@@ -1,7 +1,7 @@
 <!-- Payment Modal -->
 <div x-show="showPaymentModal" x-cloak class="fixed inset-0 bg-black/80 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
     <div class="glass p-8 rounded-2xl w-full max-w-md" @click.away="showPaymentModal = false">
-        <h2 class="text-xl font-bold mb-4">Process Payment</h2>
+        <h2 class="text-xl font-bold mb-4">Catat Pembayaran</h2>
         <p class="text-zinc-400 mb-6">Santri: <span class="text-white" x-text="selectedSantri?.nama"></span></p>
         <div class="space-y-4">
             <div>
@@ -14,11 +14,23 @@
                 </select>
             </div>
             <div>
-                <p class="text-xs text-zinc-500 mb-2 italic">Sistem akan membuat payment order QRIS dinamis. Mode default saat ini adalah mock sampai provider/PJSP diaktifkan.</p>
+                <label class="block text-sm mb-1 text-zinc-400">Metode Pembayaran</label>
+                <select x-model="paymentData.method" class="w-full bg-zinc-900 border border-zinc-800 rounded-lg p-2.5 outline-none focus:ring-1 focus:ring-primary">
+                    <option>Tunai</option>
+                    <option>Transfer</option>
+                    <option>QRIS</option>
+                </select>
+            </div>
+            <div x-show="paymentData.method !== 'QRIS'">
+                <label class="block text-sm mb-1 text-zinc-400">Bukti Pembayaran (opsional)</label>
+                <input type="file" @change="handleFileUpload($event, paymentData)" class="block w-full text-sm text-zinc-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-bold file:bg-primary/10 file:text-primary">
+            </div>
+            <div>
+                <p class="text-xs text-zinc-500 mb-2 italic" x-text="paymentData.method === 'QRIS' ? 'Sistem akan membuat payment order QRIS dinamis. Mode default saat ini adalah mock sampai provider/PJSP diaktifkan.' : 'Tunai dan Transfer langsung menandai tagihan lunas, mencatat kas masuk, dan membuat jurnal otomatis.'"></p>
             </div>
             <div class="flex gap-4 mt-8">
                 <button @click="showPaymentModal = false" class="flex-1 bg-zinc-800 py-3 rounded-lg">Batal</button>
-                <button @click="handleProcessPayment" class="flex-1 bg-primary py-3 rounded-lg font-semibold">Buat QRIS</button>
+                <button @click="handleProcessPayment" class="flex-1 bg-primary py-3 rounded-lg font-semibold" x-text="paymentData.method === 'QRIS' ? 'Buat QRIS' : 'Catat Bayar'"></button>
             </div>
         </div>
     </div>

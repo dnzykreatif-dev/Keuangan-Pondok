@@ -1,43 +1,17 @@
-function getDashboardData() {
-  const billings = getSheetData('billings');
-  const transactions = getSheetData('transactions');
-  const santri = getSheetData('santri');
-
-  const paidStatuses = new Set(['SUCCESS', 'SETTLED', 'PAID']);
-  const totalRevenue = transactions
-    .filter(transaction => paidStatuses.has(String(transaction.status || '').toUpperCase()))
-    .reduce((sum, transaction) => sum + normalizeNumber(transaction.jumlah_bayar), 0);
-
-  const totalArrears = billings
-    .filter(billing => billing.status === 'Belum Lunas')
-    .reduce((sum, billing) => sum + normalizeNumber(billing.nominal), 0);
-
-  const activeSantriCount = santri.filter(student => student.status === 'Aktif').length;
-
-  return {
-    ok: true,
-    data: {
-      stats: {
-        totalRevenue,
-        totalArrears,
-        activeSantriCount,
-        paidCount: billings.filter(billing => billing.status === 'Lunas').length,
-        unpaidCount: billings.filter(billing => billing.status === 'Belum Lunas').length
-      }
-    }
-  };
-}
-
-function generateMonthlyBills(month, year, nominal) {
+function generateMonthlyBills(month, year, nominal, classFilter) {
   const selectedMonth = normalizeText(month);
   const selectedYear = normalizeText(year);
   const billAmount = normalizeNumber(nominal, 0);
+  const selectedClass = normalizeText(classFilter);
 
   if (!selectedMonth || !selectedYear || !billAmount) {
     return { ok: false, message: 'Bulan, tahun, dan nominal wajib diisi' };
   }
 
-  const santri = getSheetData('santri').filter(student => student.status === 'Aktif');
+  const santri = getSheetData('santri').filter(student => (
+    student.status === 'Aktif' &&
+    (!selectedClass || selectedClass === 'ALL' || student.kelas === selectedClass)
+  ));
   const billingSheet = getSheetOrThrow('billings');
   const existingBills = getSheetData('billings');
 
@@ -84,7 +58,7 @@ function generateMonthlyBills(month, year, nominal) {
 
   appendRows(billingSheet, rowsToAppend);
   billsToPost.forEach(bill => postBillingJournal(bill));
-  return { ok: true, message: `Generated ${rowsToAppend.length} new bills.` };
+  return { ok: true, message: `Berhasil membuat ${rowsToAppend.length} tagihan.` };
 }
 
 function getArrearsRecap() {
