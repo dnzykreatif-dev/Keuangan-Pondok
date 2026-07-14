@@ -98,6 +98,7 @@ Script Properties yang tersedia:
 
 ## Dokumentasi
 
+- Dokumentasi fitur aplikasi: `docs/FEATURES.md`
 - Panduan pengguna: `docs/MANUAL_BOOK.md`
 - Spesifikasi teknis: `docs/TECHNICAL_SPEC.md`
 - Deployment: `docs/DEPLOYMENT_GUIDE.md`
