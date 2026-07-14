@@ -4,17 +4,228 @@
 <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
 <script src="https://cdn.tailwindcss.com"></script>
 <script src="https://unpkg.com/lucide@latest"></script>
-<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
-    body { font-family: 'IBM Plex Sans', sans-serif; background-color: #09090b; color: #fafafa; -webkit-font-smoothing: antialiased; }
+    :root {
+        --ui-bg: #e9f1f8;
+        --ui-surface: #ffffff;
+        --ui-surface-soft: #f5f8fc;
+        --ui-border: #dbe5ef;
+        --ui-text: #243041;
+        --ui-muted: #65758a;
+        --ui-primary: #1f7ad9;
+        --ui-primary-dark: #1863b2;
+        --ui-sidebar: #3f4860;
+        --ui-sidebar-deep: #343c51;
+        --ui-success: #42be27;
+        --ui-danger: #ff154b;
+        --ui-warning: #f59e0b;
+        --ui-shadow: 0 10px 28px rgba(34, 64, 102, 0.10);
+        --ui-shadow-soft: 0 6px 18px rgba(34, 64, 102, 0.08);
+    }
+
+    body {
+        font-family: 'Poppins', sans-serif;
+        background:
+            radial-gradient(circle at top right, rgba(31, 122, 217, 0.14), transparent 32%),
+            linear-gradient(180deg, #f9fbfe 0%, var(--ui-bg) 100%);
+        color: var(--ui-text);
+        -webkit-font-smoothing: antialiased;
+    }
+
     [x-cloak] { display: none !important; }
-    .glass { background: rgba(255, 255, 255, 0.02); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.08); }
-    .glass-dark { background: rgba(0, 0, 0, 0.3); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.05); }
-    .focus-ring:focus-visible { outline: 2px solid #0C5CAB; outline-offset: 2px; }
-    .sidebar-item-active { background: rgba(12, 92, 171, 0.1); color: #3b82f6; border-right: 2px solid #0C5CAB; }
+    .glass,
+    .glass-dark,
+    .panel {
+        background: var(--ui-surface);
+        color: var(--ui-text);
+        border: 1px solid var(--ui-border);
+        box-shadow: var(--ui-shadow);
+        backdrop-filter: none;
+    }
+
+    .glass-dark {
+        box-shadow: var(--ui-shadow-soft);
+    }
+
+    .focus-ring:focus-visible {
+        outline: 2px solid var(--ui-primary);
+        outline-offset: 2px;
+    }
+
+    .app-shell {
+        min-height: 100vh;
+    }
+
+    .app-sidebar {
+        background: linear-gradient(180deg, var(--ui-sidebar) 0%, var(--ui-sidebar-deep) 100%);
+        color: #f4f7fb;
+        box-shadow: inset -1px 0 0 rgba(255, 255, 255, 0.05);
+    }
+
+    .app-sidebar .sidebar-logo {
+        background: rgba(255, 255, 255, 0.04);
+        border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .app-sidebar .sidebar-section-title {
+        color: rgba(255, 255, 255, 0.55);
+        font-size: 11px;
+        letter-spacing: 0.1em;
+    }
+
+    .app-sidebar .sidebar-section-note {
+        color: rgba(255, 255, 255, 0.45);
+    }
+
+    .sidebar-item-active {
+        background: rgba(255, 255, 255, 0.10);
+        color: #ffffff;
+        box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.12);
+    }
+
+    .topbar {
+        background: linear-gradient(180deg, #1f7ad9 0%, #1770cc 100%);
+        box-shadow: 0 8px 22px rgba(28, 91, 160, 0.18);
+    }
+
+    .topbar .icon-btn {
+        color: rgba(255, 255, 255, 0.95);
+    }
+
+    .page-crumb {
+        background: rgba(255, 255, 255, 0.92);
+        border-bottom: 1px solid var(--ui-border);
+        color: #59729a;
+        box-shadow: 0 2px 10px rgba(34, 64, 102, 0.04);
+    }
+
+    .app-content {
+        color: var(--ui-text);
+    }
+
+    .app-content .glass,
+    .app-content .glass-dark,
+    .app-content .panel {
+        background: var(--ui-surface) !important;
+        border-color: var(--ui-border) !important;
+        color: var(--ui-text) !important;
+        box-shadow: var(--ui-shadow) !important;
+    }
+
+    .app-content .bg-zinc-900,
+    .app-content .bg-zinc-900\/50,
+    .app-content .bg-zinc-800,
+    .app-content .bg-zinc-800\/50 {
+        background-color: var(--ui-surface-soft) !important;
+        color: var(--ui-text) !important;
+    }
+
+    .app-content .hover\:bg-zinc-800\/50:hover,
+    .app-content .hover\:bg-zinc-700:hover {
+        background-color: #edf4fb !important;
+    }
+
+    .app-content .border-zinc-800,
+    .app-content .border-zinc-700,
+    .app-content .border-zinc-900 {
+        border-color: var(--ui-border) !important;
+    }
+
+    .app-content .divide-zinc-800 > :not([hidden]) ~ :not([hidden]),
+    .app-content .divide-zinc-700 > :not([hidden]) ~ :not([hidden]) {
+        border-color: #e6edf5 !important;
+    }
+
+    .app-content .text-zinc-500 {
+        color: var(--ui-muted) !important;
+    }
+
+    .app-content .text-zinc-400 {
+        color: #6f8198 !important;
+    }
+
+    .app-content input:not([type="checkbox"]):not([type="radio"]),
+    .app-content select,
+    .app-content textarea {
+        background: #ffffff !important;
+        border: 1px solid var(--ui-border) !important;
+        color: var(--ui-text) !important;
+        border-radius: 10px !important;
+        box-shadow: inset 0 1px 2px rgba(34, 64, 102, 0.05);
+    }
+
+    .app-content input:not([type="checkbox"]):not([type="radio"]):focus,
+    .app-content select:focus,
+    .app-content textarea:focus {
+        border-color: var(--ui-primary) !important;
+        box-shadow: 0 0 0 3px rgba(31, 122, 217, 0.14) !important;
+        outline: none !important;
+    }
+
+    .app-content table {
+        border-collapse: separate;
+        border-spacing: 0;
+        width: 100%;
+    }
+
+    .app-content thead th {
+        background: #f4f8fc !important;
+        color: #4f6279 !important;
+        font-size: 12px !important;
+        font-weight: 700 !important;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        border-color: var(--ui-border) !important;
+    }
+
+    .app-content tbody td {
+        border-color: #e6edf5 !important;
+    }
+
+    .app-content tbody tr:hover {
+        background: #f5f9fd !important;
+    }
+
+    .stat-card {
+        color: #ffffff !important;
+        box-shadow: var(--ui-shadow-soft);
+    }
+
+    .stat-blue { background: linear-gradient(135deg, #2f8ae7, #2574d4); }
+    .stat-green { background: linear-gradient(135deg, #50bf2a, #39a41f); }
+    .stat-orange { background: linear-gradient(135deg, #ff8b2d, #ff6b1f); }
+    .stat-red { background: linear-gradient(135deg, #ff0f4f, #e6003f); }
+    .stat-purple { background: linear-gradient(135deg, #8b5cf6, #6d28d9); }
+
+    .btn-soft {
+        background: #ffffff;
+        color: var(--ui-text);
+        border: 1px solid var(--ui-border);
+        box-shadow: 0 3px 10px rgba(34, 64, 102, 0.06);
+    }
+
+    .btn-soft:hover {
+        background: #f4f8fc;
+    }
+
+    .content-title {
+        color: var(--ui-text);
+        letter-spacing: -0.03em;
+    }
+
+    .content-subtitle {
+        color: var(--ui-muted);
+    }
+
+    .focus-ring:focus-visible {
+        outline: 2px solid var(--ui-primary);
+        outline-offset: 2px;
+    }
+
     ::-webkit-scrollbar { width: 6px; height: 6px; }
     ::-webkit-scrollbar-track { background: transparent; }
-    ::-webkit-scrollbar-thumb { background: #27272a; border-radius: 10px; }
+    ::-webkit-scrollbar-thumb { background: #b4c4d7; border-radius: 10px; }
     .animate-in { animation: fadeIn 0.3s ease-out; }
     @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 </style>
@@ -22,12 +233,15 @@
     tailwind.config = {
         theme: {
             extend: {
+                fontFamily: {
+                    sans: ['Poppins', 'sans-serif']
+                },
                 colors: {
-                    surface: '#09090b',
-                    primary: '#0C5CAB',
-                    secondary: '#0a4a8a',
-                    success: '#10b981',
-                    danger: '#ef4444'
+                    surface: '#e9f1f8',
+                    primary: '#1f7ad9',
+                    secondary: '#1863b2',
+                    success: '#42be27',
+                    danger: '#ff154b'
                 }
             }
         }

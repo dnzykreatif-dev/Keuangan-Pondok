@@ -2,46 +2,46 @@
     <div class="glass p-5 rounded-2xl flex flex-col xl:flex-row xl:items-end gap-4 justify-between">
         <div>
             <p class="text-xs uppercase tracking-widest text-zinc-500 font-bold">Laporan Aktivitas</p>
-            <h2 class="text-2xl font-bold mt-1" x-text="activityReport.period.label || 'Periode berjalan'"></h2>
+            <h2 class="text-2xl font-semibold mt-1" x-text="activityReport.period.label || 'Periode berjalan'"></h2>
             <p class="text-sm text-zinc-500 mt-1">Mengambil penghasilan dan beban dari jurnal yang sudah diposting, lalu menampilkan surplus atau defisit periode.</p>
         </div>
         <div class="flex flex-col sm:flex-row gap-3">
-            <select x-model="activityFilter.month" class="bg-zinc-900 border border-zinc-800 rounded-lg px-4 py-2.5 outline-none focus:ring-1 focus:ring-primary">
+            <select x-model="activityFilter.month" class="px-4 py-2.5 outline-none focus:ring-1 focus:ring-primary">
                 <option>Januari</option><option>Februari</option><option>Maret</option><option>April</option><option>Mei</option><option>Juni</option><option>Juli</option><option>Agustus</option><option>September</option><option>Oktober</option><option>November</option><option>Desember</option>
             </select>
-            <input type="number" x-model="activityFilter.year" class="bg-zinc-900 border border-zinc-800 rounded-lg px-4 py-2.5 outline-none focus:ring-1 focus:ring-primary w-full sm:w-32">
-            <button @click="fetchActivityReport" class="bg-primary px-4 py-2.5 rounded-lg font-semibold">Muat Laporan</button>
+            <input type="number" x-model="activityFilter.year" class="px-4 py-2.5 outline-none focus:ring-1 focus:ring-primary w-full sm:w-32">
+            <button @click="fetchActivityReport" class="bg-primary text-white px-4 py-2.5 rounded-lg font-semibold">Muat Laporan</button>
         </div>
     </div>
 
     <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div class="glass p-5 rounded-2xl">
             <p class="text-xs uppercase tracking-widest text-zinc-500 font-bold">Penghasilan</p>
-            <h3 class="text-2xl font-bold mt-3 text-success" x-text="formatCurrency(activityReport.summary.totalIncome)"></h3>
+            <h3 class="text-2xl font-semibold mt-3 text-success" x-text="formatCurrency(activityReport.summary.totalIncome)"></h3>
         </div>
         <div class="glass p-5 rounded-2xl">
             <p class="text-xs uppercase tracking-widest text-zinc-500 font-bold">Beban</p>
-            <h3 class="text-2xl font-bold mt-3 text-danger" x-text="formatCurrency(activityReport.summary.totalExpense)"></h3>
+            <h3 class="text-2xl font-semibold mt-3 text-danger" x-text="formatCurrency(activityReport.summary.totalExpense)"></h3>
         </div>
         <div class="glass p-5 rounded-2xl">
             <p class="text-xs uppercase tracking-widest text-zinc-500 font-bold" x-text="activityReport.summary.surplusLabel"></p>
-            <h3 class="text-2xl font-bold mt-3" :class="activityReport.summary.isSurplus ? 'text-success' : 'text-danger'" x-text="formatCurrency(Math.abs(activityReport.summary.surplusDeficit))"></h3>
+            <h3 class="text-2xl font-semibold mt-3" :class="activityReport.summary.isSurplus ? 'text-success' : 'text-danger'" x-text="formatCurrency(Math.abs(activityReport.summary.surplusDeficit))"></h3>
             <p class="text-xs text-zinc-500 mt-2" x-text="activityReport.journalCount + ' jurnal terposting'"></p>
         </div>
     </div>
 
     <div class="grid grid-cols-1 xl:grid-cols-2 gap-6">
         <div class="glass rounded-2xl overflow-hidden">
-            <div class="p-5 border-b border-zinc-800 flex items-center justify-between">
-                <h3 class="font-bold">Penghasilan</h3>
+            <div class="p-5 border-b border-[#e6edf5] flex items-center justify-between">
+                <h3 class="font-semibold">Penghasilan</h3>
                 <span class="text-xs text-zinc-500">Pendapatan per akun</span>
             </div>
             <div class="overflow-x-auto">
                 <table class="w-full text-left">
-                    <thead class="bg-zinc-900/50 text-zinc-400 text-xs uppercase">
+                    <thead>
                         <tr><th class="p-4">Akun</th><th class="p-4 text-right">Nominal</th></tr>
                     </thead>
-                    <tbody class="divide-y divide-zinc-800">
+                    <tbody class="divide-y divide-[#e6edf5]">
                         <template x-for="row in activityReport.incomeByAccount" :key="row.code">
                             <tr>
                                 <td class="p-4">
@@ -59,16 +59,16 @@
             </div>
         </div>
         <div class="glass rounded-2xl overflow-hidden">
-            <div class="p-5 border-b border-zinc-800 flex items-center justify-between">
-                <h3 class="font-bold">Beban</h3>
+            <div class="p-5 border-b border-[#e6edf5] flex items-center justify-between">
+                <h3 class="font-semibold">Beban</h3>
                 <span class="text-xs text-zinc-500">Beban per akun</span>
             </div>
             <div class="overflow-x-auto">
                 <table class="w-full text-left">
-                    <thead class="bg-zinc-900/50 text-zinc-400 text-xs uppercase">
+                    <thead>
                         <tr><th class="p-4">Akun</th><th class="p-4 text-right">Nominal</th></tr>
                     </thead>
-                    <tbody class="divide-y divide-zinc-800">
+                    <tbody class="divide-y divide-[#e6edf5]">
                         <template x-for="row in activityReport.expenseByAccount" :key="row.code">
                             <tr>
                                 <td class="p-4">
@@ -88,49 +88,49 @@
     </div>
 
     <div class="glass p-5 rounded-2xl text-sm text-zinc-500">
-        <strong class="text-white">Catatan:</strong> <span x-text="activityReport.note || 'Laporan aktivitas dihitung dari jurnal posted.'"></span>
+        <strong class="text-slate-900">Catatan:</strong> <span x-text="activityReport.note || 'Laporan aktivitas dihitung dari jurnal posted.'"></span>
     </div>
 
     <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
         <div class="glass p-5 rounded-2xl">
             <p class="text-xs uppercase tracking-widest text-zinc-500 font-bold">SPP Lunas</p>
-            <h3 class="text-2xl font-bold mt-3" x-text="operationalReport.spp.paidPercentage + '%'"></h3>
+            <h3 class="text-2xl font-semibold mt-3" x-text="operationalReport.spp.paidPercentage + '%'"></h3>
             <p class="text-xs text-zinc-500 mt-2" x-text="operationalReport.spp.paid + ' dari ' + operationalReport.spp.total + ' tagihan'"></p>
         </div>
         <div class="glass p-5 rounded-2xl">
             <p class="text-xs uppercase tracking-widest text-zinc-500 font-bold">Tunggakan SPP</p>
-            <h3 class="text-2xl font-bold mt-3 text-danger" x-text="formatCurrency(operationalReport.spp.unpaidAmount)"></h3>
+            <h3 class="text-2xl font-semibold mt-3 text-danger" x-text="formatCurrency(operationalReport.spp.unpaidAmount)"></h3>
         </div>
         <div class="glass p-5 rounded-2xl">
             <p class="text-xs uppercase tracking-widest text-zinc-500 font-bold">Donasi Masuk</p>
-            <h3 class="text-2xl font-bold mt-3 text-success" x-text="formatCurrency(operationalReport.donations.totalReceived)"></h3>
+            <h3 class="text-2xl font-semibold mt-3 text-success" x-text="formatCurrency(operationalReport.donations.totalReceived)"></h3>
         </div>
         <div class="glass p-5 rounded-2xl">
             <p class="text-xs uppercase tracking-widest text-zinc-500 font-bold">Total Pengeluaran</p>
-            <h3 class="text-2xl font-bold mt-3 text-danger" x-text="formatCurrency(operationalReport.expenses.total)"></h3>
+            <h3 class="text-2xl font-semibold mt-3 text-danger" x-text="formatCurrency(operationalReport.expenses.total)"></h3>
         </div>
     </div>
 
     <div class="grid grid-cols-1 xl:grid-cols-3 gap-6">
         <div class="glass rounded-2xl overflow-hidden">
-            <div class="p-5 border-b border-zinc-800"><h3 class="font-bold">Pengeluaran per Kategori</h3></div>
-            <div class="divide-y divide-zinc-800">
+            <div class="p-5 border-b border-[#e6edf5]"><h3 class="font-semibold">Pengeluaran per Kategori</h3></div>
+            <div class="divide-y divide-[#e6edf5]">
                 <template x-for="row in operationalReport.expenses.byCategory" :key="row.category">
                     <div class="p-4 flex items-center justify-between"><span x-text="row.category"></span><strong class="text-danger" x-text="formatCurrency(row.amount)"></strong></div>
                 </template>
             </div>
         </div>
         <div class="glass rounded-2xl overflow-hidden">
-            <div class="p-5 border-b border-zinc-800"><h3 class="font-bold">Donatur Terbesar</h3></div>
-            <div class="divide-y divide-zinc-800">
+            <div class="p-5 border-b border-[#e6edf5]"><h3 class="font-semibold">Donatur Terbesar</h3></div>
+            <div class="divide-y divide-[#e6edf5]">
                 <template x-for="donor in operationalReport.donations.topDonors" :key="donor.name">
                     <div class="p-4 flex items-center justify-between"><span x-text="donor.name"></span><strong class="text-success" x-text="formatCurrency(donor.amount)"></strong></div>
                 </template>
             </div>
         </div>
         <div class="glass rounded-2xl overflow-hidden">
-            <div class="p-5 border-b border-zinc-800"><h3 class="font-bold">Arus Kas</h3></div>
-            <div class="divide-y divide-zinc-800">
+            <div class="p-5 border-b border-[#e6edf5]"><h3 class="font-semibold">Arus Kas</h3></div>
+            <div class="divide-y divide-[#e6edf5]">
                 <div class="p-4 flex items-center justify-between"><span>Masuk</span><strong class="text-success" x-text="formatCurrency(operationalReport.cash.totalIn)"></strong></div>
                 <div class="p-4 flex items-center justify-between"><span>Keluar</span><strong class="text-danger" x-text="formatCurrency(operationalReport.cash.totalOut)"></strong></div>
                 <div class="p-4 flex items-center justify-between"><span>Saldo</span><strong x-text="formatCurrency(operationalReport.cash.balance)"></strong></div>

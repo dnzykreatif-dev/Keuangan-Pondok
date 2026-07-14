@@ -1,30 +1,38 @@
 <div x-show="view === 'dashboard'" class="animate-in space-y-8">
     <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-4">
-        <div class="glass p-5 rounded-2xl border-l-4 border-l-success">
-            <p class="text-xs uppercase tracking-widest text-zinc-500 font-bold">Saldo Kas</p>
-            <h3 class="text-2xl font-bold mt-3" x-text="formatCurrency(stats.cashBalance)"></h3>
+        <div class="stat-card stat-blue p-5 rounded-2xl">
+            <p class="text-sm font-medium leading-none opacity-90">Saldo Kas</p>
+            <h3 class="text-2xl font-semibold mt-3" x-text="formatCurrency(stats.cashBalance)"></h3>
+            <p class="text-xs mt-3 opacity-90">Periode berjalan</p>
         </div>
-        <div class="glass p-5 rounded-2xl border-l-4 border-l-primary">
-            <p class="text-xs uppercase tracking-widest text-zinc-500 font-bold">Pemasukan Bulan Ini</p>
-            <h3 class="text-2xl font-bold mt-3" x-text="formatCurrency(stats.incomeThisMonth)"></h3>
+        <div class="stat-card stat-green p-5 rounded-2xl">
+            <p class="text-sm font-medium leading-none opacity-90">Pemasukan Bulan Ini</p>
+            <h3 class="text-2xl font-semibold mt-3" x-text="formatCurrency(stats.incomeThisMonth)"></h3>
+            <p class="text-xs mt-3 opacity-90">Arus kas masuk</p>
         </div>
-        <div class="glass p-5 rounded-2xl border-l-4 border-l-danger">
-            <p class="text-xs uppercase tracking-widest text-zinc-500 font-bold">Pengeluaran Bulan Ini</p>
-            <h3 class="text-2xl font-bold mt-3" x-text="formatCurrency(stats.expenseThisMonth)"></h3>
+        <div class="stat-card stat-orange p-5 rounded-2xl">
+            <p class="text-sm font-medium leading-none opacity-90">Pengeluaran Bulan Ini</p>
+            <h3 class="text-2xl font-semibold mt-3" x-text="formatCurrency(stats.expenseThisMonth)"></h3>
+            <p class="text-xs mt-3 opacity-90">Arus kas keluar</p>
         </div>
-        <div class="glass p-5 rounded-2xl border-l-4 border-l-danger">
-            <p class="text-xs uppercase tracking-widest text-zinc-500 font-bold">Tunggakan SPP</p>
-            <h3 class="text-2xl font-bold mt-3" x-text="formatCurrency(stats.totalArrears)"></h3>
+        <div class="stat-card stat-red p-5 rounded-2xl">
+            <p class="text-sm font-medium leading-none opacity-90">Tunggakan SPP</p>
+            <h3 class="text-2xl font-semibold mt-3" x-text="formatCurrency(stats.totalArrears)"></h3>
+            <p class="text-xs mt-3 opacity-90">Belum dibayar</p>
         </div>
-        <div class="glass p-5 rounded-2xl border-l-4 border-l-success">
-            <p class="text-xs uppercase tracking-widest text-zinc-500 font-bold">Donasi Bulan Ini</p>
-            <h3 class="text-2xl font-bold mt-3" x-text="formatCurrency(stats.donationThisMonth)"></h3>
+        <div class="stat-card stat-purple p-5 rounded-2xl">
+            <p class="text-sm font-medium leading-none opacity-90">Donasi Bulan Ini</p>
+            <h3 class="text-2xl font-semibold mt-3" x-text="formatCurrency(stats.donationThisMonth)"></h3>
+            <p class="text-xs mt-3 opacity-90">Masuk ke kas</p>
         </div>
     </div>
 
     <div class="grid grid-cols-1 xl:grid-cols-2 gap-6">
         <div class="glass p-6 rounded-2xl">
-            <h3 class="font-bold mb-5">Pemasukan vs Pengeluaran</h3>
+            <div class="flex items-center justify-between mb-5">
+                <h3 class="font-semibold">Pemasukan vs Pengeluaran</h3>
+                <span class="text-xs text-zinc-500">Ringkasan bulan berjalan</span>
+            </div>
             <div class="space-y-4">
                 <template x-for="item in dashboardData.incomeVsExpense" :key="item.label">
                     <div>
@@ -32,7 +40,7 @@
                             <span x-text="item.label"></span>
                             <strong x-text="formatCurrency(item.amount)"></strong>
                         </div>
-                        <div class="h-3 bg-zinc-900 rounded-full overflow-hidden">
+                        <div class="h-3 bg-[#edf4fb] rounded-full overflow-hidden">
                             <div class="h-full bg-primary" :style="'width:' + Math.min((item.amount / Math.max(stats.incomeThisMonth, stats.expenseThisMonth, 1)) * 100, 100) + '%'"></div>
                         </div>
                     </div>
@@ -40,10 +48,13 @@
             </div>
         </div>
         <div class="glass p-6 rounded-2xl">
-            <h3 class="font-bold mb-5">5 Pengeluaran Terbesar</h3>
+            <div class="flex items-center justify-between mb-5">
+                <h3 class="font-semibold">5 Pengeluaran Terbesar</h3>
+                <span class="text-xs text-zinc-500">Kategori dominan</span>
+            </div>
             <div class="space-y-3">
                 <template x-for="row in dashboardData.topExpenses" :key="row.category">
-                    <div class="flex items-center justify-between border-b border-zinc-800 pb-3">
+                    <div class="flex items-center justify-between border-b border-[#e6edf5] pb-3">
                         <span x-text="row.category"></span>
                         <strong class="text-danger" x-text="formatCurrency(row.amount)"></strong>
                     </div>
@@ -54,16 +65,16 @@
     </div>
 
     <div class="glass rounded-2xl overflow-hidden">
-        <div class="p-5 border-b border-zinc-800 flex items-center justify-between">
-            <h3 class="font-bold">Tagihan SPP Belum Lunas</h3>
+        <div class="p-5 border-b border-[#e6edf5] flex items-center justify-between">
+            <h3 class="font-semibold">Tagihan SPP Belum Lunas</h3>
             <button @click="openView('arrears')" class="text-primary text-sm font-semibold">Lihat semua</button>
         </div>
         <div class="overflow-x-auto">
             <table class="w-full text-left">
-                <thead class="bg-zinc-900/50 text-zinc-400 text-xs uppercase">
+                <thead>
                     <tr><th class="p-4">Santri</th><th class="p-4">Kelas</th><th class="p-4">Periode</th><th class="p-4 text-right">Nominal</th></tr>
                 </thead>
-                <tbody class="divide-y divide-zinc-800">
+                <tbody class="divide-y divide-[#e6edf5]">
                     <template x-for="bill in dashboardData.unpaidBills" :key="bill.id_billing">
                         <tr><td class="p-4 font-semibold" x-text="bill.nama"></td><td class="p-4" x-text="bill.kelas"></td><td class="p-4" x-text="bill.bulan + ' ' + bill.tahun"></td><td class="p-4 text-right text-danger" x-text="formatCurrency(bill.nominal)"></td></tr>
                     </template>

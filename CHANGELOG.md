@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.4.2 - UI Refresh and Responsive Polish
+
+- Merombak shell frontend menjadi pola admin dashboard dengan sidebar gelap, topbar biru, dan area konten putih yang konsisten.
+- Menyesuaikan tampilan dashboard, santri, tagihan, pembayaran, pengeluaran, donasi, kas, laporan, dan pengaturan agar lebih dekat ke referensi desain.
+- Meningkatkan pengalaman mobile dengan backdrop menu, lebar sidebar yang lebih nyaman di layar kecil, dan spacing konten yang lebih rapi.
+- Merapikan view jarang dipakai seperti jurnal, laporan akuntansi, dana pembangunan, dan tunggakan agar tetap sejalan dengan sistem visual utama.
+
 ## 0.4.1 - Laporan Aktivitas
 
 - Menambahkan laporan aktivitas berbasis jurnal untuk periode bulanan.
