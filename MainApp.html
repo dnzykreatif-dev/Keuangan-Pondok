@@ -1,33 +1,69 @@
 <!-- Main Application -->
-<div x-show="isLoggedIn" x-cloak class="flex flex-col md:flex-row min-h-screen bg-surface">
-    <div class="md:hidden glass border-b border-zinc-800 p-4 flex justify-between items-center sticky top-0 z-40">
-        <h2 class="text-lg font-bold text-primary">Keuangan Pondok</h2>
-        <button @click="mobileMenuOpen = !mobileMenuOpen" class="p-2 hover:bg-zinc-800 rounded-lg">
-            <i data-lucide="menu" class="w-6 h-6"></i>
-        </button>
-    </div>
-
+<div x-show="isLoggedIn" x-cloak class="app-shell flex min-h-screen">
+    <div x-show="mobileMenuOpen" x-cloak @click="mobileMenuOpen = false" class="fixed inset-0 z-40 bg-slate-950/35 backdrop-blur-[2px] md:hidden"></div>
     <?!= include('Sidebar'); ?>
 
-    <main class="flex-1 p-6 md:p-10 overflow-y-auto relative">
-        <header class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
-            <div>
-                <h1 class="text-3xl font-bold tracking-tight" x-text="viewTitle()"></h1>
-                <p class="text-zinc-400 mt-1">Catat uang masuk, uang keluar, SPP, donasi, dan kas pondok.</p>
+    <div class="flex min-w-0 flex-1 flex-col">
+        <div class="topbar sticky top-0 z-40 h-16 px-4 md:px-6 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <button @click="mobileMenuOpen = !mobileMenuOpen" class="md:hidden icon-btn p-2 rounded-lg hover:bg-white/10 transition-colors" aria-label="Toggle menu">
+                    <i data-lucide="menu" class="w-6 h-6"></i>
+                </button>
+                <div class="hidden md:flex flex-col">
+                    <span class="text-xs uppercase tracking-[0.22em] text-white/70">Dashboard Keuangan</span>
+                    <h2 class="text-lg font-semibold leading-tight" x-text="settings.school_name || 'Keuangan Pondok'"></h2>
+                </div>
+                <div class="md:hidden flex flex-col">
+                    <span class="text-[10px] uppercase tracking-[0.22em] text-white/70">Keuangan Pondok</span>
+                    <h2 class="text-base font-semibold leading-tight truncate" x-text="viewTitle()"></h2>
+                </div>
             </div>
-        </header>
+            <div class="flex items-center gap-2 md:gap-3">
+                <button class="icon-btn hidden md:inline-flex p-2 rounded-full hover:bg-white/10 transition-colors" aria-label="Theme">
+                    <i data-lucide="sun-medium" class="w-5 h-5"></i>
+                </button>
+                <button class="icon-btn hidden md:inline-flex p-2 rounded-full hover:bg-white/10 transition-colors" aria-label="Settings">
+                    <i data-lucide="settings" class="w-5 h-5"></i>
+                </button>
+                <div class="flex items-center gap-3 pl-2 md:pl-3">
+                    <div class="w-9 h-9 rounded-full overflow-hidden ring-2 ring-white/30 bg-white/20 flex items-center justify-center">
+                        <template x-if="settings.logo_url">
+                            <img :src="settings.logo_url" class="w-full h-full object-cover">
+                        </template>
+                        <template x-if="!settings.logo_url">
+                            <i data-lucide="user-circle-2" class="w-6 h-6 text-white"></i>
+                        </template>
+                    </div>
+                </div>
+            </div>
+        </div>
 
-        <?!= include('DashboardView'); ?>
-        <?!= include('SantriView'); ?>
-        <?!= include('BillingView'); ?>
-        <?!= include('PaymentView'); ?>
-        <?!= include('ArrearsView'); ?>
-        <?!= include('ExpenseView'); ?>
-        <?!= include('DonationView'); ?>
-        <?!= include('CashView'); ?>
-        <?!= include('DevelopmentFundView'); ?>
-        <?!= include('ReportSummaryView'); ?>
-        <?!= include('AdvancedAccountingView'); ?>
-        <?!= include('SettingsView'); ?>
-    </main>
+        <div class="page-crumb px-4 md:px-6 py-3 text-sm">
+            <span>Home</span>
+            <span class="mx-2">»</span>
+            <span x-text="viewTitle()"></span>
+        </div>
+
+        <main class="app-content flex-1 overflow-y-auto p-4 sm:p-5 md:p-6 lg:p-8">
+            <div class="mb-6 flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
+                <div>
+                    <h1 class="content-title text-2xl md:text-3xl font-semibold" x-text="viewTitle()"></h1>
+                    <p class="content-subtitle mt-1 max-w-3xl">Kelola uang masuk, uang keluar, tagihan, laporan, dan akun dalam tampilan yang lebih rapi dan mudah dibaca.</p>
+                </div>
+            </div>
+
+            <?!= include('DashboardView'); ?>
+            <?!= include('SantriView'); ?>
+            <?!= include('BillingView'); ?>
+            <?!= include('PaymentView'); ?>
+            <?!= include('ArrearsView'); ?>
+            <?!= include('ExpenseView'); ?>
+            <?!= include('DonationView'); ?>
+            <?!= include('CashView'); ?>
+            <?!= include('DevelopmentFundView'); ?>
+            <?!= include('ReportSummaryView'); ?>
+            <?!= include('AdvancedAccountingView'); ?>
+            <?!= include('SettingsView'); ?>
+        </main>
+    </div>
 </div>
