@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.4.1 - Laporan Aktivitas
+
+- Menambahkan laporan aktivitas berbasis jurnal untuk periode bulanan.
+- Menampilkan total penghasilan, total beban, dan surplus atau defisit.
+- Menambahkan rincian penghasilan per akun dan beban per akun pada UI laporan.
+- Menambahkan filter bulan dan tahun untuk periode laporan aktivitas.
+
 ## 0.4.0 - Operational Finance Level 1
 
 - Menambahkan modul operasional Level 1: Pengeluaran, Donasi, Kas, Dana Pembangunan, dan Laporan Ringkas.

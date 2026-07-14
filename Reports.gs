@@ -71,6 +71,101 @@ function getAccountingReportData() {
   };
 }
 
+function getActivityReportData(month, year) {
+  seedAccountingDefaults();
+
+  const selectedMonth = normalizeText(month) || MONTHS_ID[new Date().getMonth()];
+  const selectedYear = normalizeNumber(year, new Date().getFullYear());
+  const monthIndex = MONTHS_ID.indexOf(selectedMonth);
+
+  if (monthIndex === -1) {
+    throw new Error(`Bulan tidak valid: ${selectedMonth}`);
+  }
+
+  const periodStart = new Date(selectedYear, monthIndex, 1);
+  const periodEnd = new Date(selectedYear, monthIndex + 1, 0, 23, 59, 59, 999);
+
+  const accounts = getSheetData('accounts');
+  const accountById = {};
+  accounts.forEach(account => {
+    accountById[account.account_id] = account;
+  });
+
+  const entries = getSheetData('journal_entries').filter(entry => {
+    const entryDate = new Date(entry.date || entry.created_at);
+    return entry.status !== 'VOID' && entryDate >= periodStart && entryDate <= periodEnd;
+  });
+  const entryIds = new Set(entries.map(entry => entry.journal_id));
+  const lines = getSheetData('journal_lines').filter(line => entryIds.has(line.journal_id));
+
+  const incomeTotals = {};
+  const expenseTotals = {};
+
+  lines.forEach(line => {
+    const account = accountById[line.account_id];
+    if (!account) return;
+
+    const accountCode = account.code;
+    if (account.type === 'Pendapatan') {
+      const amount = normalizeNumber(line.credit) - normalizeNumber(line.debit);
+      incomeTotals[accountCode] = (incomeTotals[accountCode] || 0) + amount;
+    }
+
+    if (account.type === 'Beban') {
+      const amount = normalizeNumber(line.debit) - normalizeNumber(line.credit);
+      expenseTotals[accountCode] = (expenseTotals[accountCode] || 0) + amount;
+    }
+  });
+
+  const incomeByAccount = accounts
+    .filter(account => account.type === 'Pendapatan')
+    .map(account => ({
+      code: account.code,
+      name: account.name,
+      amount: incomeTotals[account.code] || 0
+    }))
+    .filter(row => Math.abs(row.amount) > 0)
+    .sort((a, b) => b.amount - a.amount);
+
+  const expenseByAccount = accounts
+    .filter(account => account.type === 'Beban')
+    .map(account => ({
+      code: account.code,
+      name: account.name,
+      amount: expenseTotals[account.code] || 0
+    }))
+    .filter(row => Math.abs(row.amount) > 0)
+    .sort((a, b) => b.amount - a.amount);
+
+  const totalIncome = incomeByAccount.reduce((sum, row) => sum + normalizeNumber(row.amount), 0);
+  const totalExpense = expenseByAccount.reduce((sum, row) => sum + normalizeNumber(row.amount), 0);
+  const surplusDeficit = totalIncome - totalExpense;
+
+  return {
+    ok: true,
+    data: {
+      period: {
+        month: selectedMonth,
+        year: selectedYear,
+        label: `${selectedMonth} ${selectedYear}`,
+        start: periodStart,
+        end: periodEnd
+      },
+      summary: {
+        totalIncome,
+        totalExpense,
+        surplusDeficit,
+        isSurplus: surplusDeficit >= 0,
+        surplusLabel: surplusDeficit >= 0 ? 'Surplus' : 'Defisit'
+      },
+      incomeByAccount,
+      expenseByAccount,
+      journalCount: entries.length,
+      note: 'Laporan aktivitas dihitung dari jurnal yang sudah diposting pada periode terpilih.'
+    }
+  };
+}
+
 function buildFinancialPosition(trialBalance) {
   const groups = {
     assets: [],

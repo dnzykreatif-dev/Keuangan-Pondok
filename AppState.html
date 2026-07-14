@@ -28,6 +28,15 @@
                 expenses: { total: 0, byCategory: [] },
                 cash: { totalIn: 0, totalOut: 0, balance: 0, ledger: [] }
             },
+            activityFilter: { month: ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'][new Date().getMonth()], year: new Date().getFullYear() },
+            activityReport: {
+                period: { month: '', year: '', label: '' },
+                summary: { totalIncome: 0, totalExpense: 0, surplusDeficit: 0, isSurplus: true, surplusLabel: 'Surplus' },
+                incomeByAccount: [],
+                expenseByAccount: [],
+                journalCount: 0,
+                note: ''
+            },
             reportData: {
                 summary: { totalDebit: 0, totalCredit: 0, isBalanced: true, cashBank: 0, sppReceivable: 0 },
                 trialBalance: [],
@@ -265,6 +274,19 @@
                     .getAccountingReportData();
             },
 
+            fetchActivityReport() {
+                this.loading = true;
+                google.script.run
+                    .withSuccessHandler(res => {
+                        this.loading = false;
+                        if (res.ok) this.activityReport = res.data;
+                        else this.notify(res.message, 'error');
+                        this.refreshIcons();
+                    })
+                    .withFailureHandler(err => this.handleFailure(err))
+                    .getActivityReportData(this.activityFilter.month, this.activityFilter.year);
+            },
+
             get uniqueClasses() {
                 const source = this.arrearsList.length ? this.arrearsList : this.santriList;
                 return [...new Set(source.map(item => item.kelas).filter(Boolean))].sort();
@@ -462,7 +484,10 @@
                     this.fetchOperationalReports();
                 }
                 if (viewName === 'development') this.fetchDevelopmentProjects();
-                if (viewName === 'reports') this.fetchOperationalReports();
+                if (viewName === 'reports') {
+                    this.fetchOperationalReports();
+                    this.fetchActivityReport();
+                }
                 if (viewName === 'journals') this.fetchJournals();
                 if (viewName === 'accountingReports') this.fetchReports();
                 this.refreshIcons();

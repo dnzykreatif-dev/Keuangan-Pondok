@@ -38,6 +38,7 @@ Provider QRIS nyata belum dipaksa aktif. Struktur adapter sudah disiapkan agar p
 - Proyek dana pembangunan dengan target, dana terkumpul, dana terpakai, dan sisa target.
 - Buku kas operasional dari `cash_transactions`.
 - Laporan ringkas operasional.
+- Laporan aktivitas berbasis jurnal untuk penghasilan, beban, dan surplus/defisit per periode.
 - Posting otomatis:
   - tagihan: debit Piutang SPP, kredit Pendapatan SPP;
   - pembayaran: debit Kas/Bank, kredit Piutang SPP;

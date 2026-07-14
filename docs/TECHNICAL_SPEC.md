@@ -100,6 +100,16 @@ Posting otomatis:
 
 ## Laporan
 
+`getActivityReportData(month, year)` mengembalikan:
+
+- Periode laporan yang dipilih.
+- Total penghasilan.
+- Total beban.
+- Surplus atau defisit periode.
+- Rincian penghasilan per akun pendapatan.
+- Rincian beban per akun beban.
+- Jumlah jurnal yang masuk periode tersebut.
+
 `getOperationalReportData()` mengembalikan:
 
 - Ringkasan SPP: jumlah tagihan, lunas, belum lunas, nominal lunas, nominal belum lunas, dan persentase.

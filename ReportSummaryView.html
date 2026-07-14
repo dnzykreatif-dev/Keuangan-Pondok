@@ -1,4 +1,96 @@
 <div x-show="view === 'reports'" class="animate-in space-y-6">
+    <div class="glass p-5 rounded-2xl flex flex-col xl:flex-row xl:items-end gap-4 justify-between">
+        <div>
+            <p class="text-xs uppercase tracking-widest text-zinc-500 font-bold">Laporan Aktivitas</p>
+            <h2 class="text-2xl font-bold mt-1" x-text="activityReport.period.label || 'Periode berjalan'"></h2>
+            <p class="text-sm text-zinc-500 mt-1">Mengambil penghasilan dan beban dari jurnal yang sudah diposting, lalu menampilkan surplus atau defisit periode.</p>
+        </div>
+        <div class="flex flex-col sm:flex-row gap-3">
+            <select x-model="activityFilter.month" class="bg-zinc-900 border border-zinc-800 rounded-lg px-4 py-2.5 outline-none focus:ring-1 focus:ring-primary">
+                <option>Januari</option><option>Februari</option><option>Maret</option><option>April</option><option>Mei</option><option>Juni</option><option>Juli</option><option>Agustus</option><option>September</option><option>Oktober</option><option>November</option><option>Desember</option>
+            </select>
+            <input type="number" x-model="activityFilter.year" class="bg-zinc-900 border border-zinc-800 rounded-lg px-4 py-2.5 outline-none focus:ring-1 focus:ring-primary w-full sm:w-32">
+            <button @click="fetchActivityReport" class="bg-primary px-4 py-2.5 rounded-lg font-semibold">Muat Laporan</button>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div class="glass p-5 rounded-2xl">
+            <p class="text-xs uppercase tracking-widest text-zinc-500 font-bold">Penghasilan</p>
+            <h3 class="text-2xl font-bold mt-3 text-success" x-text="formatCurrency(activityReport.summary.totalIncome)"></h3>
+        </div>
+        <div class="glass p-5 rounded-2xl">
+            <p class="text-xs uppercase tracking-widest text-zinc-500 font-bold">Beban</p>
+            <h3 class="text-2xl font-bold mt-3 text-danger" x-text="formatCurrency(activityReport.summary.totalExpense)"></h3>
+        </div>
+        <div class="glass p-5 rounded-2xl">
+            <p class="text-xs uppercase tracking-widest text-zinc-500 font-bold" x-text="activityReport.summary.surplusLabel"></p>
+            <h3 class="text-2xl font-bold mt-3" :class="activityReport.summary.isSurplus ? 'text-success' : 'text-danger'" x-text="formatCurrency(Math.abs(activityReport.summary.surplusDeficit))"></h3>
+            <p class="text-xs text-zinc-500 mt-2" x-text="activityReport.journalCount + ' jurnal terposting'"></p>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 xl:grid-cols-2 gap-6">
+        <div class="glass rounded-2xl overflow-hidden">
+            <div class="p-5 border-b border-zinc-800 flex items-center justify-between">
+                <h3 class="font-bold">Penghasilan</h3>
+                <span class="text-xs text-zinc-500">Pendapatan per akun</span>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full text-left">
+                    <thead class="bg-zinc-900/50 text-zinc-400 text-xs uppercase">
+                        <tr><th class="p-4">Akun</th><th class="p-4 text-right">Nominal</th></tr>
+                    </thead>
+                    <tbody class="divide-y divide-zinc-800">
+                        <template x-for="row in activityReport.incomeByAccount" :key="row.code">
+                            <tr>
+                                <td class="p-4">
+                                    <p class="font-semibold" x-text="row.name"></p>
+                                    <p class="text-xs text-zinc-500" x-text="row.code"></p>
+                                </td>
+                                <td class="p-4 text-right text-success font-semibold" x-text="formatCurrency(row.amount)"></td>
+                            </tr>
+                        </template>
+                        <tr x-show="activityReport.incomeByAccount.length === 0">
+                            <td colspan="2" class="p-6 text-center text-sm text-zinc-500">Belum ada penghasilan pada periode ini.</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        <div class="glass rounded-2xl overflow-hidden">
+            <div class="p-5 border-b border-zinc-800 flex items-center justify-between">
+                <h3 class="font-bold">Beban</h3>
+                <span class="text-xs text-zinc-500">Beban per akun</span>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full text-left">
+                    <thead class="bg-zinc-900/50 text-zinc-400 text-xs uppercase">
+                        <tr><th class="p-4">Akun</th><th class="p-4 text-right">Nominal</th></tr>
+                    </thead>
+                    <tbody class="divide-y divide-zinc-800">
+                        <template x-for="row in activityReport.expenseByAccount" :key="row.code">
+                            <tr>
+                                <td class="p-4">
+                                    <p class="font-semibold" x-text="row.name"></p>
+                                    <p class="text-xs text-zinc-500" x-text="row.code"></p>
+                                </td>
+                                <td class="p-4 text-right text-danger font-semibold" x-text="formatCurrency(row.amount)"></td>
+                            </tr>
+                        </template>
+                        <tr x-show="activityReport.expenseByAccount.length === 0">
+                            <td colspan="2" class="p-6 text-center text-sm text-zinc-500">Belum ada beban pada periode ini.</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div class="glass p-5 rounded-2xl text-sm text-zinc-500">
+        <strong class="text-white">Catatan:</strong> <span x-text="activityReport.note || 'Laporan aktivitas dihitung dari jurnal posted.'"></span>
+    </div>
+
     <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
         <div class="glass p-5 rounded-2xl">
             <p class="text-xs uppercase tracking-widest text-zinc-500 font-bold">SPP Lunas</p>
