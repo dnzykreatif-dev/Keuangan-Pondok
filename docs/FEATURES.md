@@ -21,6 +21,29 @@ Aplikasi ini dibangun sebagai sistem keuangan pesantren berbasis Google Apps Scr
 - UI utama dibuat sederhana untuk pengurus non-akuntan.
 - Menu jurnal dan laporan akuntansi lengkap tetap tersedia, tetapi disembunyikan di `Mode Akuntansi` untuk Admin.
 
+## Fungsi Dan Penggunaan Singkat
+
+Bagian ini adalah panduan cepat. Kalau butuh detail alur setiap modul, baca bagian setelahnya.
+
+- Login dan akses dasar: fungsinya untuk masuk ke aplikasi dan membuka menu sesuai role. Pakai akun admin setelah `setupDatabase()` selesai.
+- Dashboard: fungsinya memberi ringkasan kondisi kas dan aktivitas hari ini. Pakai untuk cek cepat saldo, tunggakan, donasi, dan pengeluaran.
+- Data santri: fungsinya mengelola master santri. Pakai untuk menambah santri, melihat detail, dan membuka riwayat keuangan per santri.
+- Profil keuangan santri: fungsinya menampilkan tagihan dan tunggakan per santri. Pakai saat ingin menagih atau memeriksa riwayat pembayaran.
+- Tagihan SPP: fungsinya membuat tagihan bulanan. Pakai saat awal bulan atau saat ingin generate tagihan untuk kelas tertentu.
+- Pembayaran: fungsinya mencatat pembayaran tagihan. Pakai untuk pembayaran Tunai, Transfer, atau membuat payment order QRIS.
+- QRIS dinamis: fungsinya membuat order QRIS yang bisa diganti providernya. Pakai saat ingin mengirim link atau QR pembayaran ke wali santri.
+- Tunggakan: fungsinya melihat tagihan yang belum lunas. Pakai untuk follow-up ke wali santri atau membuat rekap keterlambatan.
+- Pengeluaran: fungsinya mencatat uang keluar pondok. Pakai saat membeli kebutuhan dapur, bayar listrik, gaji, atau pengeluaran lain.
+- Donasi: fungsinya mencatat pemasukan non-SPP. Pakai untuk wakaf, infaq, hibah, bantuan, atau janji donasi.
+- Buku kas operasional: fungsinya menampilkan arus uang masuk dan keluar. Pakai saat bendahara ingin mengecek saldo aktual.
+- Dana pembangunan: fungsinya memantau proyek pembangunan dan progres dana. Pakai saat ada target pembangunan atau pelaporan ke donatur.
+- Laporan ringkas: fungsinya menampilkan laporan operasional yang mudah dibaca. Pakai untuk rapat internal atau monitoring singkat.
+- Laporan aktivitas: fungsinya menghitung penghasilan, beban, dan surplus atau defisit per periode. Pakai saat butuh laporan PAP yang lebih formal.
+- Mode akuntansi: fungsinya membuka jurnal dan laporan akuntansi lanjutan. Pakai hanya oleh Admin atau pengelola yang paham dasar akuntansi.
+- Akuntansi double-entry: fungsinya menjaga semua transaksi balance. Pakai secara otomatis di belakang layar, bukan sebagai menu harian.
+- Laporan PAP dasar: fungsinya menyiapkan laporan formal seperti posisi keuangan dan arus kas. Pakai saat pondok sudah siap membaca laporan yang lebih lengkap.
+- Pengaturan aplikasi: fungsinya mengatur identitas pondok di aplikasi. Pakai untuk mengganti nama lembaga dan logo.
+
 ## Fitur Yang Sudah Ada
 
 ### 1. Login dan Akses Dasar
