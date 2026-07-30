@@ -5,6 +5,15 @@
     <?!= include('AppState'); ?>
 </head>
 <body x-data="app()" x-init="init()" class="min-h-screen relative">
+    <div id="initial-splash">
+        <div class="initial-splash-card">
+            <div class="initial-splash-spinner"></div>
+            <div class="flex flex-col">
+                <span class="text-sm font-semibold text-[#243041]">Memuat aplikasi...</span>
+                <span class="text-xs text-slate-500">Sedang menyiapkan dashboard keuangan</span>
+            </div>
+        </div>
+    </div>
     <?!= include('AppOverlays'); ?>
     <?!= include('LoginView'); ?>
 

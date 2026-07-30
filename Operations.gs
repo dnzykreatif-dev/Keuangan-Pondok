@@ -201,6 +201,23 @@ function getDashboardData() {
   return getOperationalDashboardData();
 }
 
+function getBootstrapData() {
+  seedOperationalDefaults();
+
+  const dashboard = getOperationalDashboardData().data;
+  const developmentProjects = getDevelopmentProjects().data;
+  const expenseCategories = getExpenseCategories().data;
+
+  return {
+    ok: true,
+    data: {
+      dashboard,
+      developmentProjects,
+      expenseCategories
+    }
+  };
+}
+
 function getOperationalReportData() {
   seedOperationalDefaults();
 

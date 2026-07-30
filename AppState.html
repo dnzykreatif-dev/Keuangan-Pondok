@@ -6,6 +6,7 @@
             isLoggedIn: false,
             appReady: false,
             loading: false,
+            bootstrapping: false,
             mobileMenuOpen: false,
             showAdvancedAccounting: false,
             toasts: [],
@@ -80,48 +81,61 @@
                 if (savedUser) {
                     this.user = JSON.parse(savedUser);
                     this.isLoggedIn = true;
-                    this.scheduleDashboardFetch();
-                    this.schedulePrefetch();
+                    this.bootstrapping = true;
+                    this.loadInitialAppData();
+                } else {
+                    window.requestAnimationFrame(() => {
+                        this.appReady = true;
+                        this.hideInitialSplash();
+                    });
                 }
 
                 this.refreshIcons();
-                window.requestAnimationFrame(() => {
-                    this.appReady = true;
-                });
-            },
-
-            scheduleDashboardFetch() {
-                const run = () => this.fetchDashboard();
-                if (window.requestIdleCallback) {
-                    window.requestIdleCallback(run, { timeout: 800 });
-                    return;
-                }
-                window.requestAnimationFrame(() => run());
-            },
-
-            schedulePrefetch() {
-                const run = () => {
-                    this.fetchDevelopmentProjects(false, false);
-                    if (!this.dataLoaded.expenseCategories) {
-                        google.script.run
-                            .withSuccessHandler(res => {
-                                if (res.ok) {
-                                    this.expenseCategories = res.data;
-                                    this.dataLoaded.expenseCategories = true;
-                                }
-                            })
-                            .getExpenseCategories();
-                    }
-                };
-                if (window.requestIdleCallback) {
-                    window.requestIdleCallback(run, { timeout: 1200 });
-                    return;
-                }
-                window.setTimeout(run, 500);
             },
 
             refreshIcons() {
                 this.$nextTick(() => { lucide.createIcons(); });
+            },
+
+            hideInitialSplash() {
+                const splash = document.getElementById('initial-splash');
+                if (splash) splash.classList.add('is-hidden');
+            },
+
+            finishInitialLoad() {
+                this.bootstrapping = false;
+                this.appReady = true;
+                this.hideInitialSplash();
+                this.refreshIcons();
+            },
+
+            loadInitialAppData() {
+                google.script.run
+                    .withSuccessHandler(res => {
+                        if (res.ok) {
+                            const bootstrap = res.data || {};
+                            if (bootstrap.dashboard) {
+                                this.stats = bootstrap.dashboard.stats || this.stats;
+                                this.dashboardData = bootstrap.dashboard;
+                            }
+                            if (Array.isArray(bootstrap.developmentProjects)) {
+                                this.developmentProjects = bootstrap.developmentProjects;
+                                this.dataLoaded.developmentProjects = true;
+                            }
+                            if (Array.isArray(bootstrap.expenseCategories)) {
+                                this.expenseCategories = bootstrap.expenseCategories;
+                                this.dataLoaded.expenseCategories = true;
+                            }
+                        } else {
+                            this.notify(res.message, 'error');
+                        }
+                        this.finishInitialLoad();
+                    })
+                    .withFailureHandler(err => {
+                        this.handleFailure(err);
+                        this.finishInitialLoad();
+                    })
+                    .getBootstrapData();
             },
 
             invalidateData(...keys) {
@@ -162,8 +176,8 @@
                             this.user = res.user;
                             localStorage.setItem('spp_user', JSON.stringify(res.user));
                             this.notify("Selamat datang kembali!");
-                            this.scheduleDashboardFetch();
-                            this.schedulePrefetch();
+                            this.bootstrapping = true;
+                            this.loadInitialAppData();
                         } else {
                             this.notify(res.message, 'error');
                         }
@@ -977,8 +991,14 @@
                 this.isLoggedIn = false;
                 this.user = {};
                 this.auth = { username: '', password: '' };
+                this.bootstrapping = false;
+                this.appReady = false;
+                this.hideInitialSplash();
                 this.refreshIcons();
                 this.notify("Anda telah keluar");
+                window.requestAnimationFrame(() => {
+                    this.appReady = true;
+                });
             },
         }
     }

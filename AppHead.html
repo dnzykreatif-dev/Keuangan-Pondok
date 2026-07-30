@@ -37,6 +37,49 @@
         -webkit-font-smoothing: antialiased;
     }
 
+    #initial-splash {
+        position: fixed;
+        inset: 0;
+        z-index: 120;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: linear-gradient(180deg, rgba(249, 251, 254, 0.98) 0%, rgba(233, 241, 248, 0.98) 100%);
+        transition: opacity 180ms ease, visibility 180ms ease;
+    }
+
+    #initial-splash.is-hidden {
+        opacity: 0;
+        visibility: hidden;
+        pointer-events: none;
+    }
+
+    .initial-splash-card {
+        min-width: 240px;
+        padding: 1.25rem 1.5rem;
+        border-radius: 1.25rem;
+        background: rgba(255, 255, 255, 0.92);
+        border: 1px solid rgba(219, 229, 239, 0.95);
+        box-shadow: 0 16px 36px rgba(34, 64, 102, 0.14);
+        display: flex;
+        align-items: center;
+        gap: 0.9rem;
+    }
+
+    .initial-splash-spinner {
+        width: 1.75rem;
+        height: 1.75rem;
+        border-radius: 9999px;
+        border: 3px solid rgba(31, 122, 217, 0.14);
+        border-top-color: var(--ui-primary);
+        animation: spin 0.9s linear infinite;
+        flex: none;
+    }
+
+    @keyframes spin {
+        to { transform: rotate(360deg); }
+    }
+
     [x-cloak] { display: none !important; }
     .glass,
     .glass-dark,
