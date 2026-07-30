@@ -51,6 +51,35 @@ function generateId(prefix) {
   return `${prefix}${stamp}${suffix}`;
 }
 
+function getBootstrapCacheVersion() {
+  return getAppProperty('BOOTSTRAP_CACHE_VERSION', '0');
+}
+
+function getBootstrapCacheKey(scope) {
+  return `${scope || 'bootstrap'}:${getBootstrapCacheVersion()}`;
+}
+
+function invalidateBootstrapCache() {
+  PropertiesService.getScriptProperties().setProperty('BOOTSTRAP_CACHE_VERSION', String(Date.now()));
+}
+
+function withBootstrapCache(scope, ttlSeconds, producer) {
+  const cache = CacheService.getScriptCache();
+  const cacheKey = getBootstrapCacheKey(scope);
+  const cached = cache.get(cacheKey);
+  if (cached) {
+    try {
+      return JSON.parse(cached);
+    } catch (error) {
+      cache.remove(cacheKey);
+    }
+  }
+
+  const response = producer();
+  cache.put(cacheKey, JSON.stringify(response), ttlSeconds || 120);
+  return response;
+}
+
 function toIsoValue(value) {
   return value instanceof Date ? value.toISOString() : value;
 }
@@ -89,6 +118,7 @@ function appendObjectRow(sheetName, data) {
   const headers = SHEET_HEADERS[sheetName];
   const sheet = getSheetOrThrow(sheetName);
   sheet.appendRow(headers.map(header => data.hasOwnProperty(header) ? data[header] : ''));
+  invalidateBootstrapCache();
 }
 
 function updateSheetRowByKey(sheetName, keyName, keyValue, updates) {
@@ -109,6 +139,7 @@ function updateSheetRowByKey(sheetName, keyName, keyValue, updates) {
           sheet.getRange(rowIndex + 1, columnIndex + 1).setValue(updates[field]);
         }
       });
+      invalidateBootstrapCache();
       return true;
     }
   }
@@ -129,6 +160,7 @@ function deleteSheetRowByKey(sheetName, keyName, keyValue) {
   for (let rowIndex = 1; rowIndex < values.length; rowIndex++) {
     if (String(values[rowIndex][keyIndex]) === String(keyValue)) {
       sheet.deleteRow(rowIndex + 1);
+      invalidateBootstrapCache();
       return true;
     }
   }

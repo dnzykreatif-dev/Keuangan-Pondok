@@ -233,17 +233,16 @@ function createPaymentOrder(payment) {
 }
 
 function storePendingTransaction(orderId, order, bill) {
-  const sheet = getSheetOrThrow('transactions');
-  sheet.appendRow([
-    orderId,
-    order.id_santri,
-    bill.id_billing,
-    new Date(),
-    normalizeNumber(order.amount),
-    'QRIS',
-    'PENDING',
-    order.created_by || 'System'
-  ]);
+  appendObjectRow('transactions', {
+    id_transaksi: orderId,
+    id_santri: order.id_santri,
+    id_billing: bill.id_billing,
+    tanggal: new Date(),
+    jumlah_bayar: normalizeNumber(order.amount),
+    metode: 'QRIS',
+    status: 'PENDING',
+    penerima: order.created_by || 'System'
+  });
 }
 
 function processPayment(payment) {

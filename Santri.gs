@@ -13,7 +13,13 @@ function addSantri(santriData) {
   }
 
   const id = generateId('S');
-  sheet.appendRow([id, nama, kelas, 'Aktif', kontakOrtu]);
+  appendObjectRow('santri', {
+    id_santri: id,
+    nama,
+    kelas,
+    status: 'Aktif',
+    kontak_ortu: kontakOrtu
+  });
   return { ok: true, message: 'Santri added successfully' };
 }
 

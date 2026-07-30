@@ -148,53 +148,55 @@ function getTopExpenses(expenses, limit) {
 }
 
 function getOperationalDashboardData() {
-  seedOperationalDefaults();
+  return withBootstrapCache('dashboard', 180, function () {
+    seedOperationalDefaults();
 
-  const monthKey = currentMonthKey();
-  const cashRows = getSheetData('cash_transactions');
-  const monthCashRows = cashRows.filter(row => toMonthKey(row.date) === monthKey);
-  const billings = getSheetData('billings');
-  const santri = getSheetData('santri');
-  const donations = getSheetData('donations');
-  const expenses = getSheetData('expenses');
-  const monthDonations = donations.filter(row => row.status === 'Masuk' && toMonthKey(row.date) === monthKey);
-  const monthExpenses = expenses.filter(row => toMonthKey(row.date) === monthKey);
-  const cashSummary = calculateCashSummary(cashRows);
+    const monthKey = currentMonthKey();
+    const cashRows = getSheetData('cash_transactions');
+    const monthCashRows = cashRows.filter(row => toMonthKey(row.date) === monthKey);
+    const billings = getSheetData('billings');
+    const santri = getSheetData('santri');
+    const donations = getSheetData('donations');
+    const expenses = getSheetData('expenses');
+    const monthDonations = donations.filter(row => row.status === 'Masuk' && toMonthKey(row.date) === monthKey);
+    const monthExpenses = expenses.filter(row => toMonthKey(row.date) === monthKey);
+    const cashSummary = calculateCashSummary(cashRows);
 
-  const incomeThisMonth = monthCashRows
-    .filter(row => row.direction === 'Masuk')
-    .reduce((sum, row) => sum + normalizeNumber(row.amount), 0);
-  const expenseThisMonth = monthCashRows
-    .filter(row => row.direction === 'Keluar')
-    .reduce((sum, row) => sum + normalizeNumber(row.amount), 0);
-  const totalArrears = billings
-    .filter(billing => billing.status === 'Belum Lunas')
-    .map(enrichBillWithPaymentStatus)
-    .reduce((sum, billing) => sum + normalizeNumber(billing.remaining_amount), 0);
-  const donationThisMonth = monthDonations.reduce((sum, donation) => sum + normalizeNumber(donation.amount), 0);
+    const incomeThisMonth = monthCashRows
+      .filter(row => row.direction === 'Masuk')
+      .reduce((sum, row) => sum + normalizeNumber(row.amount), 0);
+    const expenseThisMonth = monthCashRows
+      .filter(row => row.direction === 'Keluar')
+      .reduce((sum, row) => sum + normalizeNumber(row.amount), 0);
+    const totalArrears = billings
+      .filter(billing => billing.status === 'Belum Lunas')
+      .map(enrichBillWithPaymentStatus)
+      .reduce((sum, billing) => sum + normalizeNumber(billing.remaining_amount), 0);
+    const donationThisMonth = monthDonations.reduce((sum, donation) => sum + normalizeNumber(donation.amount), 0);
 
-  return {
-    ok: true,
-    data: {
-      stats: {
-        cashBalance: cashSummary.balance,
-        incomeThisMonth,
-        expenseThisMonth,
-        totalArrears,
-        donationThisMonth,
-        activeSantriCount: santri.filter(student => student.status === 'Aktif').length,
-        totalRevenue: cashSummary.totalIn,
-        paidCount: billings.filter(billing => billing.status === 'Lunas').length,
-        unpaidCount: billings.filter(billing => billing.status === 'Belum Lunas').length
-      },
-      incomeVsExpense: [
-        { label: 'Pemasukan', amount: incomeThisMonth },
-        { label: 'Pengeluaran', amount: expenseThisMonth }
-      ],
-      topExpenses: getTopExpenses(monthExpenses, 5),
-      unpaidBills: getArrearsRecap().data.slice(0, 10)
-    }
-  };
+    return {
+      ok: true,
+      data: {
+        stats: {
+          cashBalance: cashSummary.balance,
+          incomeThisMonth,
+          expenseThisMonth,
+          totalArrears,
+          donationThisMonth,
+          activeSantriCount: santri.filter(student => student.status === 'Aktif').length,
+          totalRevenue: cashSummary.totalIn,
+          paidCount: billings.filter(billing => billing.status === 'Lunas').length,
+          unpaidCount: billings.filter(billing => billing.status === 'Belum Lunas').length
+        },
+        incomeVsExpense: [
+          { label: 'Pemasukan', amount: incomeThisMonth },
+          { label: 'Pengeluaran', amount: expenseThisMonth }
+        ],
+        topExpenses: getTopExpenses(monthExpenses, 5),
+        unpaidBills: getArrearsRecap().data.slice(0, 10)
+      }
+    };
+  });
 }
 
 function getDashboardData() {
@@ -202,20 +204,22 @@ function getDashboardData() {
 }
 
 function getBootstrapData() {
-  seedOperationalDefaults();
+  return withBootstrapCache('bootstrap', 180, function () {
+    seedOperationalDefaults();
 
-  const dashboard = getOperationalDashboardData().data;
-  const developmentProjects = getDevelopmentProjects().data;
-  const expenseCategories = getExpenseCategories().data;
+    const dashboard = getOperationalDashboardData().data;
+    const developmentProjects = getDevelopmentProjects().data;
+    const expenseCategories = getExpenseCategories().data;
 
-  return {
-    ok: true,
-    data: {
-      dashboard,
-      developmentProjects,
-      expenseCategories
-    }
-  };
+    return {
+      ok: true,
+      data: {
+        dashboard,
+        developmentProjects,
+        expenseCategories
+      }
+    };
+  });
 }
 
 function getOperationalReportData() {
