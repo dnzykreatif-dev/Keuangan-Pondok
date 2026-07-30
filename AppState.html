@@ -682,15 +682,29 @@
             },
 
             sendPaymentLink(santri) {
+                const phone = String(santri.kontak_ortu || '').replace(/[^\d]/g, '');
+                if (!phone) return this.notify("Kontak orang tua/wali belum diisi", "error");
+
+                const waWindow = window.open('', '_blank');
+                if (waWindow) {
+                    waWindow.document.write('<p style="font-family:sans-serif;padding:16px">Menyiapkan pesan WhatsApp...</p>');
+                    waWindow.document.close();
+                }
+
                 this.loading = true;
                 google.script.run
                     .withSuccessHandler(res => {
                         this.loading = false;
                         if (!res.ok) return this.notify(res.message, 'error');
-                        const paymentLink = res.redirect_url || res.link;
-                        const msg = `Assalamu'alaikum Wr. Wb.\n\nMohon Bapak/Ibu melakukan pembayaran tagihan an. *${santri.nama}* melalui QRIS/link resmi berikut:\n\n${paymentLink || res.qr_string}\n\nTerima kasih.`;
-                        const waUrl = `https://wa.me/${santri.kontak_ortu}?text=${encodeURIComponent(msg)}`;
-                        window.open(waUrl, '_blank');
+                        const paymentLink = res.redirect_url || res.link || res.payment_url;
+                        const payloadText = paymentLink || res.qr_string || '(tautan QRIS belum tersedia)';
+                        const msg = `Assalamu'alaikum Wr. Wb.\n\nMohon Bapak/Ibu melakukan pembayaran tagihan an. *${santri.nama}* melalui QRIS/link resmi berikut:\n\n${payloadText}\n\nTerima kasih.`;
+                        const waUrl = `https://wa.me/${phone}?text=${encodeURIComponent(msg)}`;
+                        if (waWindow) {
+                            waWindow.location.href = waUrl;
+                        } else {
+                            window.open(waUrl, '_blank');
+                        }
                         this.notify("Link pembayaran dikirim ke WA");
                     })
                     .withFailureHandler(err => this.handleFailure(err))
