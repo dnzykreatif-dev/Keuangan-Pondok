@@ -6,12 +6,17 @@
         <div class="space-y-4">
             <div>
                 <label class="block text-sm mb-1 text-slate-500">Pilih Tagihan</label>
-                <select x-model="paymentData.id_billing" class="w-full p-2.5 outline-none focus:ring-1 focus:ring-primary">
+                <select x-model="paymentData.id_billing" @change="setPaymentAmountFromSelectedBill" class="w-full p-2.5 outline-none focus:ring-1 focus:ring-primary">
                     <option value="">-- Pilih Tagihan --</option>
                     <template x-for="b in unpaidBills" :key="b.id_billing">
-                        <option :value="b.id_billing" x-text="b.bulan + ' ' + b.tahun + ' (Rp ' + b.nominal + ')'"></option>
+                        <option :value="b.id_billing" x-text="b.bulan + ' ' + b.tahun + ' (Sisa: ' + formatCurrency(b.remaining_amount || b.nominal) + ')'"></option>
                     </template>
                 </select>
+            </div>
+            <div>
+                <label class="block text-sm mb-1 text-slate-500">Nominal Bayar</label>
+                <input type="number" x-model="paymentData.amount" class="w-full p-2.5 outline-none focus:ring-1 focus:ring-primary">
+                <p class="text-xs text-slate-500 mt-1">Boleh diisi sebagian. Tagihan lunas otomatis setelah total bayar mencukupi.</p>
             </div>
             <div>
                 <label class="block text-sm mb-1 text-slate-500">Metode Pembayaran</label>

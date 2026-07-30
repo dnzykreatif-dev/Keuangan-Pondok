@@ -98,6 +98,25 @@ function buildJournalLine(journalId, line) {
   ];
 }
 
+function buildJournalLineWithAccountMap(journalId, line, accountMap) {
+  const accountCode = normalizeText(line.account_code);
+  const account = accountMap[accountCode];
+  if (!account) {
+    throw new Error(`Akun aktif tidak ditemukan: ${accountCode}`);
+  }
+
+  return [
+    generateId('JL'),
+    journalId,
+    account.account_id,
+    account.code,
+    account.name,
+    normalizeNumber(line.debit),
+    normalizeNumber(line.credit),
+    normalizeText(line.memo)
+  ];
+}
+
 function validateJournalLines(lines) {
   if (!lines || lines.length < 2) {
     throw new Error('Jurnal minimal memiliki dua baris');
@@ -194,6 +213,161 @@ function postBillingJournal(billing) {
       { account_code: DEFAULT_ACCOUNT_CODES.SPP_REVENUE, debit: 0, credit: amount, memo: billing.id_santri }
     ]
   });
+}
+
+function postBillingJournals(billings) {
+  seedAccountingDefaults();
+
+  if (!billings || !billings.length) {
+    return { ok: true, created: 0 };
+  }
+
+  const existingSources = new Set(getSheetData('journal_entries')
+    .filter(entry => entry.source_type === 'billing' && entry.status !== 'VOID')
+    .map(entry => String(entry.source_id)));
+  const accountMap = {};
+  getActiveAccounts().forEach(account => {
+    accountMap[String(account.code)] = account;
+  });
+
+  const entryRows = [];
+  const lineRows = [];
+  const auditRows = [];
+
+  billings.forEach(billing => {
+    if (existingSources.has(String(billing.id_billing))) return;
+
+    const amount = normalizeNumber(billing.nominal);
+    if (amount <= 0) {
+      throw new Error('Nominal tagihan harus lebih dari nol');
+    }
+
+    const journalId = generateId('JE');
+    const createdAt = new Date();
+    const fundId = billing.fund_id || getDefaultFundId();
+    const unitId = billing.unit_id || getDefaultUnitId();
+    const programId = billing.program_id || getDefaultProgramId();
+    const description = `Tagihan SPP ${billing.bulan} ${billing.tahun}`;
+    const lines = [
+      { account_code: DEFAULT_ACCOUNT_CODES.SPP_RECEIVABLE, debit: amount, credit: 0, memo: billing.id_santri },
+      { account_code: DEFAULT_ACCOUNT_CODES.SPP_REVENUE, debit: 0, credit: amount, memo: billing.id_santri }
+    ];
+
+    validateJournalLines(lines);
+    entryRows.push([
+      journalId,
+      createdAt,
+      description,
+      'billing',
+      billing.id_billing,
+      fundId,
+      'POSTED',
+      createdAt,
+      'System',
+      unitId,
+      programId
+    ]);
+    lines.forEach(line => lineRows.push(buildJournalLineWithAccountMap(journalId, line, accountMap)));
+    auditRows.push([
+      generateId('LOG'),
+      createdAt,
+      'System',
+      'POST_JOURNAL',
+      'journal_entries',
+      journalId,
+      `billing:${billing.id_billing}`
+    ]);
+  });
+
+  appendRows(getSheetOrThrow('journal_entries'), entryRows);
+  appendRows(getSheetOrThrow('journal_lines'), lineRows);
+  appendRows(getSheetOrThrow('audit_logs'), auditRows);
+
+  return { ok: true, created: entryRows.length };
+}
+
+function updateBillingJournalAmount(idBilling, amount) {
+  const billing = getSheetData('billings').find(item => item.id_billing === idBilling);
+  if (!billing) return false;
+
+  const journal = findJournalEntryBySource('billing', idBilling);
+  if (!journal) return false;
+
+  const paymentAmount = normalizeNumber(amount);
+  if (paymentAmount <= 0) {
+    throw new Error('Nominal tagihan harus lebih dari nol');
+  }
+
+  const lineSheet = getSheetOrThrow('journal_lines');
+  const values = lineSheet.getDataRange().getValues();
+  const headers = values[0] || [];
+  const journalIndex = headers.indexOf('journal_id');
+  const debitIndex = headers.indexOf('debit');
+  const creditIndex = headers.indexOf('credit');
+  const accountCodeIndex = headers.indexOf('account_code');
+
+  for (let rowIndex = 1; rowIndex < values.length; rowIndex++) {
+    if (String(values[rowIndex][journalIndex]) !== String(journal.journal_id)) continue;
+
+    const accountCode = String(values[rowIndex][accountCodeIndex]);
+    if (accountCode === DEFAULT_ACCOUNT_CODES.SPP_RECEIVABLE) {
+      lineSheet.getRange(rowIndex + 1, debitIndex + 1).setValue(paymentAmount);
+      lineSheet.getRange(rowIndex + 1, creditIndex + 1).setValue(0);
+    }
+    if (accountCode === DEFAULT_ACCOUNT_CODES.SPP_REVENUE) {
+      lineSheet.getRange(rowIndex + 1, debitIndex + 1).setValue(0);
+      lineSheet.getRange(rowIndex + 1, creditIndex + 1).setValue(paymentAmount);
+    }
+  }
+
+  updateSheetRowByKey('journal_entries', 'journal_id', journal.journal_id, {
+    description: `Tagihan SPP ${billing.bulan} ${billing.tahun}`
+  });
+  return true;
+}
+
+function voidJournalBySource(sourceType, sourceId, actor) {
+  const existing = findJournalEntryBySource(sourceType, sourceId);
+  if (!existing) return false;
+
+  updateSheetRowByKey('journal_entries', 'journal_id', existing.journal_id, { status: 'VOID' });
+  recordAuditLog(actor || 'System', 'VOID_JOURNAL', 'journal_entries', existing.journal_id, `${sourceType}:${sourceId}`);
+  return true;
+}
+
+function updateJournalBySource(sourceType, sourceId, entryData) {
+  const journal = findJournalEntryBySource(sourceType, sourceId);
+  if (!journal) return false;
+
+  const lines = entryData.lines || [];
+  validateJournalLines(lines);
+
+  updateSheetRowByKey('journal_entries', 'journal_id', journal.journal_id, {
+    date: entryData.date || journal.date,
+    description: normalizeText(entryData.description) || journal.description,
+    fund_id: entryData.fund_id || journal.fund_id || getDefaultFundId(),
+    unit_id: entryData.unit_id || journal.unit_id || getDefaultUnitId(),
+    program_id: entryData.program_id || journal.program_id || getDefaultProgramId()
+  });
+
+  const lineSheet = getSheetOrThrow('journal_lines');
+  const values = lineSheet.getDataRange().getValues();
+  const headers = values[0] || [];
+  const journalIndex = headers.indexOf('journal_id');
+
+  for (let rowIndex = values.length - 1; rowIndex >= 1; rowIndex--) {
+    if (String(values[rowIndex][journalIndex]) === String(journal.journal_id)) {
+      lineSheet.deleteRow(rowIndex + 1);
+    }
+  }
+
+  const accountMap = {};
+  getActiveAccounts().forEach(account => {
+    accountMap[String(account.code)] = account;
+  });
+  appendRows(lineSheet, lines.map(line => buildJournalLineWithAccountMap(journal.journal_id, line, accountMap)));
+
+  return true;
 }
 
 function postPaymentJournal(orderId, idBilling, amount, createdBy) {
@@ -370,7 +544,10 @@ function getTrialBalanceData() {
   seedAccountingDefaults();
 
   const accounts = getSheetData('accounts');
-  const lines = getSheetData('journal_lines');
+  const activeEntryIds = new Set(getSheetData('journal_entries')
+    .filter(entry => entry.status !== 'VOID')
+    .map(entry => entry.journal_id));
+  const lines = getSheetData('journal_lines').filter(line => activeEntryIds.has(line.journal_id));
   const totals = {};
 
   lines.forEach(line => {

@@ -1,7 +1,10 @@
 <div x-show="view === 'santri'" class="animate-in space-y-6">
     <div class="flex flex-col sm:flex-row justify-between gap-4">
-        <input type="text" placeholder="Cari santri..." class="w-full sm:w-64 px-4 py-2 outline-none focus:ring-1 focus:ring-primary">
-        <button @click="showAddSantriModal = true" class="bg-primary text-white px-4 py-2 rounded-lg font-semibold whitespace-nowrap">+ Tambah Santri</button>
+        <input type="text" x-model="santriSearch" placeholder="Cari santri..." class="w-full sm:w-64 px-4 py-2 outline-none focus:ring-1 focus:ring-primary">
+        <button @click="showAddSantriModal = true" class="btn-action btn-action-primary whitespace-nowrap">
+            <i data-lucide="user-plus" class="w-4 h-4"></i>
+            <span>Tambah Santri</span>
+        </button>
     </div>
     <div class="grid grid-cols-1 xl:grid-cols-3 gap-6">
         <div class="xl:col-span-2 glass rounded-2xl overflow-hidden">
@@ -11,19 +14,39 @@
                         <tr><th class="p-4">ID</th><th class="p-4">Nama</th><th class="p-4">Kelas</th><th class="p-4">Status</th><th class="p-4">Aksi</th></tr>
                     </thead>
                     <tbody class="divide-y divide-[#e6edf5]">
-                        <template x-for="s in santriList" :key="s.id_santri">
+                        <template x-for="s in filteredSantriList" :key="s.id_santri">
                             <tr class="hover:bg-[#f5f9fd] transition-colors">
                                 <td class="p-4 text-zinc-400" x-text="s.id_santri"></td>
                                 <td class="p-4 font-semibold" x-text="s.nama"></td>
                                 <td class="p-4" x-text="s.kelas"></td>
                                 <td class="p-4"><span class="px-2 py-1 rounded text-xs" :class="s.status === 'Aktif' ? 'bg-success/20 text-success' : 'bg-[#eef4fb] text-zinc-500'" x-text="s.status"></span></td>
-                                <td class="p-4 flex flex-wrap gap-3">
-                                    <button @click="openStudentProfile(s)" class="text-primary hover:text-secondary text-sm font-semibold">Detail</button>
-                                    <button @click="openPaymentModal(s)" class="text-success hover:text-[#2f8a1a] text-sm font-semibold">Bayar</button>
-                                    <button @click="sendPaymentLink(s)" class="text-danger hover:brightness-90 text-sm font-semibold">Kirim QRIS</button>
+                                <td class="p-4">
+                                    <div class="flex flex-wrap gap-2.5">
+                                        <button @click="openStudentProfile(s)" class="btn-action btn-action-ghost btn-action-sm">
+                                            <i data-lucide="badge-info" class="w-4 h-4"></i>
+                                            <span>Detail</span>
+                                        </button>
+                                        <button @click="editSantri(s)" class="btn-action btn-action-primary btn-action-sm">
+                                            <i data-lucide="pencil-line" class="w-4 h-4"></i>
+                                            <span>Edit</span>
+                                        </button>
+                                        <button @click="deleteSantriData(s)" class="btn-action btn-action-danger btn-action-sm">
+                                            <i data-lucide="trash-2" class="w-4 h-4"></i>
+                                            <span>Hapus</span>
+                                        </button>
+                                        <button @click="openPaymentModal(s)" class="btn-action btn-action-success btn-action-sm">
+                                            <i data-lucide="wallet" class="w-4 h-4"></i>
+                                            <span>Bayar</span>
+                                        </button>
+                                        <button @click="sendPaymentLink(s)" class="btn-action btn-action-ghost btn-action-sm">
+                                            <i data-lucide="qr-code" class="w-4 h-4"></i>
+                                            <span>Kirim QRIS</span>
+                                        </button>
+                                    </div>
                                 </td>
                             </tr>
                         </template>
+                        <tr x-show="filteredSantriList.length === 0"><td colspan="5" class="p-6 text-center text-sm text-zinc-500">Santri tidak ditemukan.</td></tr>
                     </tbody>
                 </table>
             </div>
@@ -50,6 +73,26 @@
                                 <span class="text-sm font-semibold" :class="bill.status === 'Lunas' ? 'text-success' : 'text-danger'" x-text="bill.status === 'Lunas' ? 'Lunas' : 'Belum'"></span>
                             </div>
                         </template>
+                    </div>
+                    <div class="pt-4 border-t border-[#e6edf5]">
+                        <h4 class="font-semibold mb-3">Transaksi Pembayaran</h4>
+                        <div class="space-y-2 max-h-72 overflow-y-auto pr-1">
+                            <template x-for="transaction in selectedStudentProfile.transactions" :key="transaction.id_transaksi">
+                                <div class="border-b border-[#e6edf5] pb-2">
+                                    <div class="flex items-start justify-between gap-3">
+                                        <div>
+                                            <p class="text-sm font-semibold" x-text="formatCurrency(transaction.jumlah_bayar)"></p>
+                                            <p class="text-xs text-zinc-500" x-text="formatDate(transaction.tanggal) + ' / ' + transaction.metode + ' / ' + transaction.status"></p>
+                                        </div>
+                                        <div class="flex gap-2">
+                                            <button @click="editPaymentData(transaction)" class="text-primary text-xs font-semibold">Edit</button>
+                                            <button @click="deletePaymentData(transaction)" class="text-danger text-xs font-semibold">Hapus</button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </template>
+                            <p x-show="selectedStudentProfile.transactions.length === 0" class="text-sm text-zinc-500">Belum ada transaksi pembayaran.</p>
+                        </div>
                     </div>
                 </div>
             </template>

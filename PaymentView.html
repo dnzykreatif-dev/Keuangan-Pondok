@@ -4,7 +4,7 @@
             <h2 class="text-xl font-semibold">Pembayaran</h2>
             <p class="text-sm text-zinc-500 mt-1">Catat Tunai, Transfer, atau buat QRIS untuk tagihan SPP.</p>
         </div>
-        <button @click="fetchPaymentOrders" class="btn-soft px-4 py-2 rounded-lg text-sm font-semibold flex items-center gap-2">
+        <button @click="fetchPaymentOrders(true)" class="btn-soft px-4 py-2 rounded-lg text-sm font-semibold flex items-center gap-2">
             <i data-lucide="refresh-cw" class="w-4 h-4"></i>Refresh QRIS
         </button>
     </div>
@@ -16,7 +16,7 @@
         <div class="overflow-x-auto">
             <table class="w-full text-left">
                 <thead>
-                    <tr><th class="p-4">Tanggal</th><th class="p-4">Order</th><th class="p-4">Provider</th><th class="p-4 text-right">Nominal</th><th class="p-4">Status</th><th class="p-4">Link/QR</th></tr>
+                    <tr><th class="p-4">Tanggal</th><th class="p-4">Order</th><th class="p-4">Provider</th><th class="p-4 text-right">Nominal</th><th class="p-4">Status</th><th class="p-4">Link/QR</th><th class="p-4">Aksi</th></tr>
                 </thead>
                 <tbody class="divide-y divide-[#e6edf5]">
                     <template x-for="order in paymentOrders" :key="order.order_id">
@@ -27,9 +27,10 @@
                             <td class="p-4 text-right" x-text="formatCurrency(order.amount)"></td>
                             <td class="p-4"><span class="px-2 py-1 rounded text-xs font-semibold" :class="String(order.status).toUpperCase() === 'PAID' ? 'bg-success/20 text-success' : 'bg-primary/20 text-primary'" x-text="order.status"></span></td>
                             <td class="p-4"><a x-show="order.payment_url" :href="order.payment_url" target="_blank" class="text-primary hover:underline text-sm font-semibold">Buka</a><span x-show="!order.payment_url" class="text-xs text-zinc-500" x-text="order.qr_string || '-'"></span></td>
+                            <td class="p-4"><button @click="deletePaymentData({ id_transaksi: order.order_id })" class="text-danger text-sm font-semibold">Hapus/Batal</button></td>
                         </tr>
                     </template>
-                    <tr x-show="paymentOrders.length === 0"><td colspan="6" class="p-6 text-center text-sm text-zinc-500">Belum ada order QRIS.</td></tr>
+                    <tr x-show="paymentOrders.length === 0"><td colspan="7" class="p-6 text-center text-sm text-zinc-500">Belum ada order QRIS.</td></tr>
                 </tbody>
             </table>
         </div>

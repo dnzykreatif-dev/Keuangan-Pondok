@@ -25,18 +25,70 @@ function addDevelopmentProject(project) {
   }
 }
 
+function updateDevelopmentProject(projectId, project) {
+  try {
+    const existing = getSheetData('development_projects').find(item => item.project_id === projectId);
+    if (!existing) throw new Error('Proyek pembangunan tidak ditemukan');
+
+    const name = normalizeText(project.name) || existing.name;
+    const targetBudget = normalizeNumber(project.target_budget, normalizeNumber(existing.target_budget));
+    if (!name) throw new Error('Nama proyek wajib diisi');
+    if (targetBudget <= 0) throw new Error('Target anggaran harus lebih dari nol');
+
+    updateSheetRowByKey('development_projects', 'project_id', projectId, {
+      name,
+      target_budget: targetBudget,
+      description: normalizeText(project.description),
+      status: normalizeText(project.status) || existing.status || 'Aktif',
+      start_date: project.start_date ? new Date(project.start_date) : existing.start_date,
+      end_date: project.end_date ? new Date(project.end_date) : ''
+    });
+
+    return { ok: true, message: 'Proyek pembangunan berhasil diperbarui' };
+  } catch (error) {
+    return { ok: false, message: error.toString() };
+  }
+}
+
+function deleteDevelopmentProject(projectId) {
+  try {
+    const hasDonation = getSheetData('donations').some(donation => donation.project_id === projectId);
+    const hasExpense = getSheetData('expenses').some(expense => expense.project_id === projectId);
+    if (hasDonation || hasExpense) {
+      throw new Error('Proyek yang sudah dipakai donasi/pengeluaran tidak bisa dihapus');
+    }
+
+    const deleted = deleteSheetRowByKey('development_projects', 'project_id', projectId);
+    if (!deleted) throw new Error('Proyek pembangunan tidak ditemukan');
+    return { ok: true, message: 'Proyek pembangunan berhasil dihapus' };
+  } catch (error) {
+    return { ok: false, message: error.toString() };
+  }
+}
+
 function getDevelopmentProjects() {
   seedOperationalDefaults();
 
   const donations = getSheetData('donations').filter(donation => donation.status === 'Masuk');
   const expenses = getSheetData('expenses');
+  const collectedByProject = {};
+  const usedByProject = {};
+
+  donations.forEach(donation => {
+    const projectId = normalizeText(donation.project_id);
+    if (!projectId) return;
+    collectedByProject[projectId] = (collectedByProject[projectId] || 0) + normalizeNumber(donation.amount);
+  });
+
+  expenses.forEach(expense => {
+    const projectId = normalizeText(expense.project_id);
+    if (!projectId) return;
+    usedByProject[projectId] = (usedByProject[projectId] || 0) + normalizeNumber(expense.amount);
+  });
+
   const data = getSheetData('development_projects').map(project => {
-    const collected = donations
-      .filter(donation => donation.project_id === project.project_id)
-      .reduce((sum, donation) => sum + normalizeNumber(donation.amount), 0);
-    const used = expenses
-      .filter(expense => expense.project_id === project.project_id)
-      .reduce((sum, expense) => sum + normalizeNumber(expense.amount), 0);
+    const collected = collectedByProject[project.project_id] || 0;
+    const used = usedByProject[project.project_id] || 0;
     const target = normalizeNumber(project.target_budget);
     return {
       ...project,

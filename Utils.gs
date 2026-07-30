@@ -46,8 +46,8 @@ function hashPassword(password) {
 }
 
 function generateId(prefix) {
-  const stamp = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyyMMddHHmmss');
-  const suffix = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
+  const stamp = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyyMMddHHmmssSSS');
+  const suffix = Utilities.getUuid().split('-')[0].toUpperCase();
   return `${prefix}${stamp}${suffix}`;
 }
 
@@ -109,6 +109,26 @@ function updateSheetRowByKey(sheetName, keyName, keyValue, updates) {
           sheet.getRange(rowIndex + 1, columnIndex + 1).setValue(updates[field]);
         }
       });
+      return true;
+    }
+  }
+
+  return false;
+}
+
+function deleteSheetRowByKey(sheetName, keyName, keyValue) {
+  const sheet = getSheetOrThrow(sheetName);
+  const values = sheet.getDataRange().getValues();
+  const headers = values[0] || [];
+  const keyIndex = headers.indexOf(keyName);
+
+  if (keyIndex === -1) {
+    throw new Error(`Kolom kunci tidak ditemukan: ${keyName}`);
+  }
+
+  for (let rowIndex = 1; rowIndex < values.length; rowIndex++) {
+    if (String(values[rowIndex][keyIndex]) === String(keyValue)) {
+      sheet.deleteRow(rowIndex + 1);
       return true;
     }
   }

@@ -67,6 +67,39 @@ function recordCashTransaction(data) {
   return record;
 }
 
+function updateCashTransactionBySource(sourceType, sourceId, data) {
+  const cash = getSheetData('cash_transactions').find(row => (
+    row.source_type === normalizeText(sourceType) &&
+    row.source_id === normalizeText(sourceId)
+  ));
+  if (!cash) return false;
+
+  const amount = normalizeNumber(data.amount, normalizeNumber(cash.amount));
+  if (amount <= 0) throw new Error('Nominal kas harus lebih dari nol');
+
+  return updateSheetRowByKey('cash_transactions', 'cash_id', cash.cash_id, {
+    date: data.date || cash.date,
+    direction: data.direction || cash.direction,
+    amount,
+    method: data.method || cash.method,
+    description: data.description || cash.description,
+    proof_url: data.proof_url || cash.proof_url,
+    project_id: data.project_id || cash.project_id,
+    fund_id: data.fund_id || cash.fund_id || getDefaultFundId(),
+    unit_id: data.unit_id || cash.unit_id || getDefaultUnitId(),
+    program_id: data.program_id || cash.program_id || getDefaultProgramId()
+  });
+}
+
+function deleteCashTransactionBySource(sourceType, sourceId) {
+  const cash = getSheetData('cash_transactions').find(row => (
+    row.source_type === normalizeText(sourceType) &&
+    row.source_id === normalizeText(sourceId)
+  ));
+  if (!cash) return false;
+  return deleteSheetRowByKey('cash_transactions', 'cash_id', cash.cash_id);
+}
+
 function cashTransactionExists(sourceType, sourceId) {
   seedOperationalDefaults();
   const normalizedType = normalizeText(sourceType);
@@ -136,7 +169,8 @@ function getOperationalDashboardData() {
     .reduce((sum, row) => sum + normalizeNumber(row.amount), 0);
   const totalArrears = billings
     .filter(billing => billing.status === 'Belum Lunas')
-    .reduce((sum, billing) => sum + normalizeNumber(billing.nominal), 0);
+    .map(enrichBillWithPaymentStatus)
+    .reduce((sum, billing) => sum + normalizeNumber(billing.remaining_amount), 0);
   const donationThisMonth = monthDonations.reduce((sum, donation) => sum + normalizeNumber(donation.amount), 0);
 
   return {
@@ -176,7 +210,13 @@ function getOperationalReportData() {
   const cashRows = getSheetData('cash_transactions').sort((a, b) => new Date(a.date) - new Date(b.date));
   const cashSummary = calculateCashSummary(cashRows);
   const paidBills = billings.filter(bill => bill.status === 'Lunas');
-  const unpaidBills = billings.filter(bill => bill.status === 'Belum Lunas');
+  const unpaidBills = billings
+    .filter(bill => bill.status === 'Belum Lunas')
+    .map(enrichBillWithPaymentStatus)
+    .filter(bill => bill.remaining_amount > 0);
+  const paidSppAmount = getSheetData('transactions')
+    .filter(transaction => String(transaction.status).toUpperCase() === 'PAID')
+    .reduce((sum, transaction) => sum + normalizeNumber(transaction.jumlah_bayar), 0);
   const receivedDonations = donations.filter(donation => donation.status === 'Masuk');
 
   const expenseByCategory = getTopExpenses(expenses, expenses.length || 1);
@@ -200,8 +240,8 @@ function getOperationalReportData() {
         total: billings.length,
         paid: paidBills.length,
         unpaid: unpaidBills.length,
-        paidAmount: paidBills.reduce((sum, bill) => sum + normalizeNumber(bill.nominal), 0),
-        unpaidAmount: unpaidBills.reduce((sum, bill) => sum + normalizeNumber(bill.nominal), 0),
+        paidAmount: paidSppAmount,
+        unpaidAmount: unpaidBills.reduce((sum, bill) => sum + normalizeNumber(bill.remaining_amount), 0),
         paidPercentage: billings.length ? Math.round((paidBills.length / billings.length) * 100) : 0
       },
       donations: {

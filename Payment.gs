@@ -154,6 +154,36 @@ function buildPaymentOrder(payment, bill) {
   };
 }
 
+function getPaidAmountForBilling(idBilling) {
+  return getSheetData('transactions')
+    .filter(transaction => (
+      transaction.id_billing === idBilling &&
+      String(transaction.status).toUpperCase() === 'PAID'
+    ))
+    .reduce((sum, transaction) => sum + normalizeNumber(transaction.jumlah_bayar), 0);
+}
+
+function enrichBillWithPaymentStatus(bill) {
+  const nominal = normalizeNumber(bill.nominal);
+  const paidAmount = getPaidAmountForBilling(bill.id_billing);
+  const remainingAmount = Math.max(nominal - paidAmount, 0);
+  return {
+    ...bill,
+    paid_amount: paidAmount,
+    remaining_amount: remainingAmount,
+    payment_status: remainingAmount <= 0 ? 'Lunas' : paidAmount > 0 ? 'Sebagian' : 'Belum Lunas'
+  };
+}
+
+function updateBillingStatusFromPayments(idBilling) {
+  const bill = getSheetData('billings').find(item => item.id_billing === idBilling);
+  if (!bill) return false;
+
+  const paidAmount = getPaidAmountForBilling(idBilling);
+  const status = paidAmount >= normalizeNumber(bill.nominal) ? 'Lunas' : 'Belum Lunas';
+  return updateSheetRowByKey('billings', 'id_billing', idBilling, { status });
+}
+
 function createPaymentOrder(payment) {
   try {
     seedPaymentDefaults();
@@ -166,7 +196,12 @@ function createPaymentOrder(payment) {
     const student = getSheetData('santri').find(item => item.id_santri === (payment.id_santri || bill.id_santri));
     if (!student) throw new Error('Data santri tidak ditemukan');
 
-    const order = buildPaymentOrder(payment, bill);
+    const amount = normalizeNumber(payment.amount || bill.nominal);
+    const remainingAmount = Math.max(normalizeNumber(bill.nominal) - getPaidAmountForBilling(bill.id_billing), 0);
+    if (amount <= 0) throw new Error('Nominal pembayaran harus lebih dari nol');
+    if (amount > remainingAmount) throw new Error(`Nominal pembayaran melebihi sisa tagihan: ${remainingAmount}`);
+
+    const order = buildPaymentOrder({ ...payment, amount }, bill);
     const adapter = getPaymentAdapter(order.provider_id);
     const invoice = adapter.createInvoice(order, bill, student);
     const orderRecord = {
@@ -332,8 +367,8 @@ function verifyDuitkuCallback(payload) {
 function completePaidOrder(order, normalized, providerName) {
   const amount = normalizeNumber(normalized.amount || order.amount);
   const billing = getSheetData('billings').find(item => item.id_billing === order.id_billing) || {};
-  markBillingAsPaid(order.id_billing);
   updateTransactionStatus(order.order_id, 'PAID');
+  updateBillingStatusFromPayments(order.id_billing);
   updateSheetRowByKey('payment_orders', 'order_id', order.order_id, {
     status: 'PAID',
     provider_reference: normalized.provider_reference || order.provider_reference,
@@ -372,12 +407,13 @@ function recordDirectPayment(payment) {
 
     const amount = normalizeNumber(payment.amount || bill.nominal);
     if (amount <= 0) throw new Error('Nominal pembayaran harus lebih dari nol');
+    const remainingAmount = Math.max(normalizeNumber(bill.nominal) - getPaidAmountForBilling(bill.id_billing), 0);
+    if (amount > remainingAmount) throw new Error(`Nominal pembayaran melebihi sisa tagihan: ${remainingAmount}`);
 
     const paymentId = generateId('PAYCASH');
     const proofUrl = saveOptionalProof(payment.proofBase64, paymentId);
     const actor = payment.penerima || payment.created_by || 'System';
 
-    markBillingAsPaid(bill.id_billing);
     appendObjectRow('transactions', {
       id_transaksi: paymentId,
       id_santri: bill.id_santri,
@@ -388,6 +424,7 @@ function recordDirectPayment(payment) {
       status: 'PAID',
       penerima: actor
     });
+    updateBillingStatusFromPayments(bill.id_billing);
     recordCashTransaction({
       direction: 'Masuk',
       source_type: 'payment',
@@ -403,7 +440,93 @@ function recordDirectPayment(payment) {
     });
     postPaymentJournal(paymentId, bill.id_billing, amount, method);
 
-    return { ok: true, message: 'Pembayaran berhasil dicatat', data: { payment_id: paymentId } };
+    const newRemainingAmount = Math.max(remainingAmount - amount, 0);
+    return {
+      ok: true,
+      message: newRemainingAmount > 0
+        ? `Pembayaran sebagian berhasil dicatat. Sisa tagihan ${newRemainingAmount}.`
+        : 'Pembayaran berhasil dicatat dan tagihan lunas',
+      data: { payment_id: paymentId, remaining_amount: newRemainingAmount }
+    };
+  } catch (error) {
+    return { ok: false, message: error.toString() };
+  }
+}
+
+function updatePayment(paymentId, payment) {
+  try {
+    const transaction = getSheetData('transactions').find(item => item.id_transaksi === paymentId);
+    if (!transaction) throw new Error('Pembayaran tidak ditemukan');
+    if (String(transaction.status).toUpperCase() !== 'PAID') throw new Error('Hanya pembayaran PAID yang bisa diedit');
+
+    const bill = getSheetData('billings').find(item => item.id_billing === transaction.id_billing);
+    if (!bill) throw new Error('Tagihan tidak ditemukan');
+
+    const currentAmount = normalizeNumber(transaction.jumlah_bayar);
+    const paidByOthers = Math.max(getPaidAmountForBilling(bill.id_billing) - currentAmount, 0);
+    const amount = normalizeNumber(payment.amount, currentAmount);
+    if (amount <= 0) throw new Error('Nominal pembayaran harus lebih dari nol');
+    if (paidByOthers + amount > normalizeNumber(bill.nominal)) {
+      throw new Error(`Nominal pembayaran melebihi sisa tagihan: ${Math.max(normalizeNumber(bill.nominal) - paidByOthers, 0)}`);
+    }
+
+    const method = normalizeText(payment.method) || transaction.metode || 'Tunai';
+    if (['Tunai', 'Transfer', 'QRIS'].indexOf(method) === -1) throw new Error('Metode pembayaran tidak valid');
+
+    updateSheetRowByKey('transactions', 'id_transaksi', paymentId, {
+      tanggal: payment.date ? new Date(payment.date) : transaction.tanggal,
+      jumlah_bayar: amount,
+      metode: method,
+      penerima: normalizeText(payment.penerima) || transaction.penerima || 'System'
+    });
+    updateSheetRowByKey('payment_orders', 'order_id', paymentId, { amount });
+    updateCashTransactionBySource('payment', paymentId, {
+      date: payment.date ? new Date(payment.date) : transaction.tanggal,
+      direction: 'Masuk',
+      amount,
+      method,
+      description: `Pembayaran SPP ${bill.bulan} ${bill.tahun}`,
+      fund_id: bill.fund_id || getDefaultFundId(),
+      unit_id: bill.unit_id || getDefaultUnitId(),
+      program_id: bill.program_id || getDefaultProgramId()
+    });
+    updateJournalBySource('payment', paymentId, {
+      date: payment.date ? new Date(payment.date) : transaction.tanggal,
+      description: `Pembayaran SPP ${bill.id_billing}`,
+      fund_id: bill.fund_id || getDefaultFundId(),
+      unit_id: bill.unit_id || getDefaultUnitId(),
+      program_id: bill.program_id || getDefaultProgramId(),
+      lines: [
+        { account_code: DEFAULT_ACCOUNT_CODES.CASH_BANK, debit: amount, credit: 0, memo: paymentId },
+        { account_code: DEFAULT_ACCOUNT_CODES.SPP_RECEIVABLE, debit: 0, credit: amount, memo: bill.id_billing }
+      ]
+    });
+    updateBillingStatusFromPayments(bill.id_billing);
+
+    return { ok: true, message: 'Pembayaran berhasil diperbarui' };
+  } catch (error) {
+    return { ok: false, message: error.toString() };
+  }
+}
+
+function deletePayment(paymentId) {
+  try {
+    const transaction = getSheetData('transactions').find(item => item.id_transaksi === paymentId);
+    if (!transaction) throw new Error('Pembayaran tidak ditemukan');
+
+    if (String(transaction.status).toUpperCase() === 'PENDING') {
+      updateSheetRowByKey('transactions', 'id_transaksi', paymentId, { status: 'CANCELLED' });
+      updateSheetRowByKey('payment_orders', 'order_id', paymentId, { status: 'CANCELLED' });
+      return { ok: true, message: 'Order pembayaran pending berhasil dibatalkan' };
+    }
+
+    updateSheetRowByKey('transactions', 'id_transaksi', paymentId, { status: 'VOID' });
+    deleteCashTransactionBySource('payment', paymentId);
+    voidJournalBySource('payment', paymentId, 'System');
+    updateBillingStatusFromPayments(transaction.id_billing);
+    updateSheetRowByKey('payment_orders', 'order_id', paymentId, { status: 'VOID' });
+
+    return { ok: true, message: 'Pembayaran berhasil dihapus dari perhitungan' };
   } catch (error) {
     return { ok: false, message: error.toString() };
   }

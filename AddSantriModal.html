@@ -16,8 +16,14 @@
                 <input type="text" x-model="newSantri.kontak_ortu" class="w-full p-2.5 outline-none focus:ring-1 focus:ring-primary">
             </div>
             <div class="flex gap-4 mt-6">
-                <button @click="showAddSantriModal = false" class="flex-1 btn-soft py-3 rounded-lg">Batal</button>
-                <button @click="handleAddSantri" class="flex-1 bg-primary text-white py-3 rounded-lg font-semibold">Simpan</button>
+                <button @click="showAddSantriModal = false" class="flex-1 btn-action btn-action-ghost">
+                    <i data-lucide="x" class="w-4 h-4"></i>
+                    <span>Batal</span>
+                </button>
+                <button type="button" @click="handleAddSantri" :disabled="loading" class="flex-1 btn-action btn-action-primary disabled:opacity-60 disabled:cursor-not-allowed">
+                    <i data-lucide="save" class="w-4 h-4"></i>
+                    <span>Simpan</span>
+                </button>
             </div>
         </div>
     </div>

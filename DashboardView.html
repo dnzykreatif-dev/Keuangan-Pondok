@@ -1,29 +1,29 @@
 <div x-show="view === 'dashboard'" class="animate-in space-y-8">
     <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-4">
-        <div class="stat-card stat-blue p-5 rounded-2xl">
+        <div class="stat-card stat-blue rounded-2xl p-5 min-h-[160px] h-full flex flex-col justify-between">
             <p class="text-sm font-medium leading-none opacity-90">Saldo Kas</p>
-            <h3 class="text-2xl font-semibold mt-3" x-text="formatCurrency(stats.cashBalance)"></h3>
-            <p class="text-xs mt-3 opacity-90">Periode berjalan</p>
+            <h3 class="text-[1.65rem] font-semibold leading-tight tracking-tight break-words" x-text="formatCurrency(stats.cashBalance)"></h3>
+            <p class="text-xs leading-none opacity-90">Periode berjalan</p>
         </div>
-        <div class="stat-card stat-green p-5 rounded-2xl">
+        <div class="stat-card stat-green rounded-2xl p-5 min-h-[160px] h-full flex flex-col justify-between">
             <p class="text-sm font-medium leading-none opacity-90">Pemasukan Bulan Ini</p>
-            <h3 class="text-2xl font-semibold mt-3" x-text="formatCurrency(stats.incomeThisMonth)"></h3>
-            <p class="text-xs mt-3 opacity-90">Arus kas masuk</p>
+            <h3 class="text-[1.65rem] font-semibold leading-tight tracking-tight break-words" x-text="formatCurrency(stats.incomeThisMonth)"></h3>
+            <p class="text-xs leading-none opacity-90">Arus kas masuk</p>
         </div>
-        <div class="stat-card stat-orange p-5 rounded-2xl">
+        <div class="stat-card stat-orange rounded-2xl p-5 min-h-[160px] h-full flex flex-col justify-between">
             <p class="text-sm font-medium leading-none opacity-90">Pengeluaran Bulan Ini</p>
-            <h3 class="text-2xl font-semibold mt-3" x-text="formatCurrency(stats.expenseThisMonth)"></h3>
-            <p class="text-xs mt-3 opacity-90">Arus kas keluar</p>
+            <h3 class="text-[1.65rem] font-semibold leading-tight tracking-tight break-words" x-text="formatCurrency(stats.expenseThisMonth)"></h3>
+            <p class="text-xs leading-none opacity-90">Arus kas keluar</p>
         </div>
-        <div class="stat-card stat-red p-5 rounded-2xl">
+        <div class="stat-card stat-red rounded-2xl p-5 min-h-[160px] h-full flex flex-col justify-between">
             <p class="text-sm font-medium leading-none opacity-90">Tunggakan SPP</p>
-            <h3 class="text-2xl font-semibold mt-3" x-text="formatCurrency(stats.totalArrears)"></h3>
-            <p class="text-xs mt-3 opacity-90">Belum dibayar</p>
+            <h3 class="text-[1.65rem] font-semibold leading-tight tracking-tight break-words" x-text="formatCurrency(stats.totalArrears)"></h3>
+            <p class="text-xs leading-none opacity-90">Belum dibayar</p>
         </div>
-        <div class="stat-card stat-purple p-5 rounded-2xl">
+        <div class="stat-card stat-purple rounded-2xl p-5 min-h-[160px] h-full flex flex-col justify-between">
             <p class="text-sm font-medium leading-none opacity-90">Donasi Bulan Ini</p>
-            <h3 class="text-2xl font-semibold mt-3" x-text="formatCurrency(stats.donationThisMonth)"></h3>
-            <p class="text-xs mt-3 opacity-90">Masuk ke kas</p>
+            <h3 class="text-[1.65rem] font-semibold leading-tight tracking-tight break-words" x-text="formatCurrency(stats.donationThisMonth)"></h3>
+            <p class="text-xs leading-none opacity-90">Masuk ke kas</p>
         </div>
     </div>
 

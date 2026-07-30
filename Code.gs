@@ -9,5 +9,10 @@ function doGet(e) {
 }
 
 function include(filename) {
-  return HtmlService.createTemplateFromFile(filename).evaluate().getContent();
+  const template = HtmlService.createTemplateFromFile(filename);
+  if (filename === 'AppState') {
+    const appSettings = getAppSettings();
+    template.initialSettingsJson = JSON.stringify(appSettings.ok ? appSettings.data : {});
+  }
+  return template.evaluate().getContent();
 }

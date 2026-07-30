@@ -20,7 +20,7 @@
                 </div>
                 <select x-model="newProject.status" class="w-full p-2.5"><option>Aktif</option><option>Selesai</option><option>Ditunda</option></select>
                 <textarea x-model="newProject.description" placeholder="Keterangan proyek" class="w-full p-2.5"></textarea>
-                <button @click="handleAddProject" class="w-full bg-primary text-white py-3 rounded-lg font-semibold">Simpan Proyek</button>
+                <button type="button" @click="handleAddProject" :disabled="loading" class="w-full bg-primary text-white py-3 rounded-lg font-semibold disabled:opacity-60 disabled:cursor-not-allowed">Simpan Proyek</button>
             </div>
         </div>
         <div class="xl:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -43,6 +43,10 @@
                         <div><p class="text-zinc-500">Sisa Target</p><strong class="text-slate-900" x-text="formatCurrency(project.remaining_to_target)"></strong></div>
                     </div>
                     <p class="text-sm text-zinc-500" x-text="project.description || 'Belum ada keterangan.'"></p>
+                    <div class="flex gap-3 pt-2 border-t border-[#e6edf5]">
+                        <button @click="editProjectData(project)" class="text-primary text-sm font-semibold">Edit</button>
+                        <button @click="deleteProjectData(project)" class="text-danger text-sm font-semibold">Hapus</button>
+                    </div>
                 </div>
             </template>
             <div x-show="developmentProjects.length === 0" class="glass p-6 rounded-2xl text-sm text-zinc-500">Belum ada proyek pembangunan.</div>

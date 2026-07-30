@@ -1,9 +1,13 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Keuangan Pondok</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="preconnect" href="https://cdn.jsdelivr.net">
+<link rel="preconnect" href="https://unpkg.com">
 <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
-<script src="https://cdn.tailwindcss.com"></script>
-<script src="https://unpkg.com/lucide@latest"></script>
+<script defer src="https://cdn.tailwindcss.com"></script>
+<script defer src="https://unpkg.com/lucide@latest"></script>
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
     :root {
@@ -207,6 +211,85 @@
 
     .btn-soft:hover {
         background: #f4f8fc;
+    }
+
+    .btn-action {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.45rem;
+        border-radius: 0.9rem;
+        border: 1px solid transparent;
+        padding: 0.7rem 1rem;
+        font-size: 0.875rem;
+        font-weight: 700;
+        line-height: 1;
+        transition:
+            background-color 0.15s ease,
+            color 0.15s ease,
+            border-color 0.15s ease,
+            box-shadow 0.15s ease,
+            transform 0.08s ease;
+        outline: none;
+    }
+
+    .btn-action:active {
+        transform: translateY(1px) scale(0.99);
+    }
+
+    .btn-action:focus-visible {
+        box-shadow: 0 0 0 3px rgba(31, 122, 217, 0.18);
+    }
+
+    .btn-action-primary {
+        background: linear-gradient(180deg, #2f8ae7 0%, #1f7ad9 100%);
+        color: #ffffff;
+        box-shadow: 0 8px 18px rgba(31, 122, 217, 0.22);
+    }
+
+    .btn-action-primary:hover {
+        background: linear-gradient(180deg, #3690eb 0%, #186bca 100%);
+        box-shadow: 0 10px 22px rgba(31, 122, 217, 0.28);
+    }
+
+    .btn-action-success {
+        background: linear-gradient(180deg, #4fc437 0%, #3aa923 100%);
+        color: #ffffff;
+        box-shadow: 0 8px 18px rgba(66, 190, 39, 0.22);
+    }
+
+    .btn-action-success:hover {
+        background: linear-gradient(180deg, #57cc40 0%, #31961c 100%);
+        box-shadow: 0 10px 22px rgba(66, 190, 39, 0.28);
+    }
+
+    .btn-action-danger {
+        background: linear-gradient(180deg, #ff3567 0%, #f01851 100%);
+        color: #ffffff;
+        box-shadow: 0 8px 18px rgba(255, 21, 75, 0.20);
+    }
+
+    .btn-action-danger:hover {
+        background: linear-gradient(180deg, #ff4674 0%, #e21046 100%);
+        box-shadow: 0 10px 22px rgba(255, 21, 75, 0.26);
+    }
+
+    .btn-action-ghost {
+        background: #ffffff;
+        color: var(--ui-text);
+        border-color: var(--ui-border);
+        box-shadow: 0 4px 10px rgba(34, 64, 102, 0.08);
+    }
+
+    .btn-action-ghost:hover {
+        background: #f4f8fc;
+        border-color: #c8d6e6;
+    }
+
+    .btn-action-sm {
+        padding: 0.55rem 0.85rem;
+        border-radius: 0.8rem;
+        font-size: 0.78rem;
     }
 
     .content-title {

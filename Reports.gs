@@ -1,12 +1,20 @@
 function getAccountingReportData() {
   const trialBalance = getTrialBalanceData();
   const journalEntries = getJournalSummaries(10).data;
-  const entries = getSheetData('journal_entries');
-  const lines = getSheetData('journal_lines');
+  const entries = getSheetData('journal_entries').filter(entry => entry.status !== 'VOID');
+  const activeEntryIds = new Set(entries.map(entry => entry.journal_id));
+  const lines = getSheetData('journal_lines').filter(line => activeEntryIds.has(line.journal_id));
   const entryFunds = {};
+  const trialBalanceByAccountId = {};
+  const trialBalanceByCode = {};
 
   entries.forEach(entry => {
     entryFunds[entry.journal_id] = entry.fund_id || DEFAULT_FUND_ID;
+  });
+
+  trialBalance.forEach(account => {
+    trialBalanceByAccountId[account.account_id] = account;
+    trialBalanceByCode[String(account.code)] = account;
   });
 
   const totalDebit = trialBalance.reduce((sum, row) => sum + normalizeNumber(row.debit), 0);
@@ -26,7 +34,7 @@ function getAccountingReportData() {
 
   lines.forEach(line => {
     const fundId = entryFunds[line.journal_id] || DEFAULT_FUND_ID;
-    const account = trialBalance.find(item => item.account_id === line.account_id);
+    const account = trialBalanceByAccountId[line.account_id];
     if (!account || !fundBalances.hasOwnProperty(fundId)) return;
 
     if (account.type === 'Pendapatan') {
@@ -48,7 +56,7 @@ function getAccountingReportData() {
   }));
 
   const financialPosition = buildFinancialPosition(trialBalance);
-  const cashFlow = buildCashFlowReport(entries, lines, trialBalance);
+  const cashFlow = buildCashFlowReport(entries, lines, trialBalanceByCode);
   const notes = buildBasicNotes(trialBalance, funds, entries);
 
   return {
@@ -202,13 +210,13 @@ function getCashFlowActivity(sourceType) {
   return 'operasi';
 }
 
-function buildCashFlowReport(entries, lines, trialBalance) {
+function buildCashFlowReport(entries, lines, trialBalanceByCode) {
   const entryById = {};
   entries.forEach(entry => {
     entryById[entry.journal_id] = entry;
   });
 
-  const cashAccount = trialBalance.find(account => String(account.code) === DEFAULT_ACCOUNT_CODES.CASH_BANK);
+  const cashAccount = trialBalanceByCode[DEFAULT_ACCOUNT_CODES.CASH_BANK];
   const result = {
     operasi: 0,
     investasi: 0,

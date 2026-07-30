@@ -1,5 +1,5 @@
 <!-- Login Screen -->
-<div x-show="!isLoggedIn" x-cloak class="flex items-center justify-center min-h-screen p-4 bg-[radial-gradient(circle_at_top,_rgba(31,122,217,0.14),_transparent_38%),linear-gradient(180deg,#f9fbfe_0%,#e9f1f8_100%)]">
+<div x-show="appReady && !isLoggedIn" x-cloak class="flex items-center justify-center min-h-screen p-4 bg-[radial-gradient(circle_at_top,_rgba(31,122,217,0.14),_transparent_38%),linear-gradient(180deg,#f9fbfe_0%,#e9f1f8_100%)]">
     <div class="w-full max-w-md animate-in">
         <div class="panel p-10 rounded-3xl relative overflow-hidden">
             <div class="absolute -top-20 -right-20 w-40 h-40 bg-primary/10 rounded-full blur-3xl"></div>

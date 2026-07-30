@@ -21,8 +21,17 @@
                             <td class="p-4 font-semibold" x-text="a.nama"></td>
                             <td class="p-4" x-text="a.kelas"></td>
                             <td class="p-4" x-text="a.bulan + ' ' + a.tahun"></td>
-                            <td class="p-4 text-right text-danger font-semibold" x-text="formatCurrency(a.nominal)"></td>
-                            <td class="p-4"><a :href="'https://wa.me/' + a.kontak + '?text=Assalamu%27alaikum%2C%20mohon%20segera%20melunasi%20SPP%20bulan%20' + a.bulan" target="_blank" class="bg-success/20 text-success px-3 py-1 rounded text-xs font-semibold">Remind WA</a></td>
+                            <td class="p-4 text-right">
+                                <p class="text-danger font-semibold" x-text="formatCurrency(a.remaining_amount || a.nominal)"></p>
+                                <p x-show="a.paid_amount > 0" class="text-xs text-zinc-500" x-text="'Dibayar ' + formatCurrency(a.paid_amount)"></p>
+                            </td>
+                            <td class="p-4">
+                                <div class="flex flex-wrap gap-2">
+                                    <a :href="'https://wa.me/' + a.kontak + '?text=Assalamu%27alaikum%2C%20mohon%20segera%20melunasi%20SPP%20bulan%20' + a.bulan" target="_blank" class="bg-success/20 text-success px-3 py-1 rounded text-xs font-semibold">Remind WA</a>
+                                    <button @click="editBillingData(a)" class="bg-primary/20 text-primary px-3 py-1 rounded text-xs font-semibold">Edit</button>
+                                    <button @click="deleteBillingData(a)" class="bg-danger/20 text-danger px-3 py-1 rounded text-xs font-semibold">Hapus</button>
+                                </div>
+                            </td>
                         </tr>
                     </template>
                     <tr x-show="getFilteredArrears().length === 0">
