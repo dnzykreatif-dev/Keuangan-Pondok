@@ -101,7 +101,7 @@
 
             schedulePrefetch() {
                 const run = () => {
-                    this.fetchDevelopmentProjects();
+                    this.fetchDevelopmentProjects(false, false);
                     if (!this.dataLoaded.expenseCategories) {
                         google.script.run
                             .withSuccessHandler(res => {
@@ -188,12 +188,12 @@
                     .getDashboardData();
             },
 
-            fetchSantri(force = false) {
+            fetchSantri(force = false, showLoading = false) {
                 if (!force && this.dataLoaded.santri) return;
-                this.loading = true;
+                if (showLoading) this.loading = true;
                 google.script.run
                     .withSuccessHandler(res => {
-                        this.loading = false;
+                        if (showLoading) this.loading = false;
                         if (res.ok) {
                             this.santriList = res.data;
                             this.dataLoaded.santri = true;
@@ -218,12 +218,12 @@
                     .getStudentFinanceProfile(santri.id_santri);
             },
 
-            fetchArrears(force = false) {
+            fetchArrears(force = false, showLoading = false) {
                 if (!force && this.dataLoaded.arrears) return;
-                this.loading = true;
+                if (showLoading) this.loading = true;
                 google.script.run
                     .withSuccessHandler(res => {
-                        this.loading = false;
+                        if (showLoading) this.loading = false;
                         if (res.ok) {
                             this.arrearsList = res.data;
                             this.dataLoaded.arrears = true;
@@ -237,12 +237,12 @@
                     .getArrearsRecap();
             },
 
-            fetchPaymentOrders(force = false) {
+            fetchPaymentOrders(force = false, showLoading = false) {
                 if (!force && this.dataLoaded.paymentOrders) return;
-                this.loading = true;
+                if (showLoading) this.loading = true;
                 google.script.run
                     .withSuccessHandler(res => {
-                        this.loading = false;
+                        if (showLoading) this.loading = false;
                         if (res.ok) {
                             this.paymentOrders = res.data;
                             this.dataLoaded.paymentOrders = true;
@@ -254,17 +254,17 @@
                     .getPaymentOrders(50);
             },
 
-            fetchExpenses(force = false) {
+            fetchExpenses(force = false, showLoading = false) {
                 const needsList = force || !this.dataLoaded.expenseList;
                 const needsCategories = force || !this.dataLoaded.expenseCategories;
                 const needsProjects = force || !this.dataLoaded.developmentProjects;
                 if (!needsList && !needsCategories && !needsProjects) return;
                 const hasPrimaryRequest = needsList || needsProjects;
-                this.loading = true;
+                if (showLoading) this.loading = true;
                 if (needsList) {
                     google.script.run
                         .withSuccessHandler(res => {
-                            this.loading = false;
+                            if (showLoading) this.loading = false;
                             if (res.ok) {
                                 this.expenseList = res.data;
                                 this.dataLoaded.expenseList = true;
@@ -281,22 +281,22 @@
                                 this.expenseCategories = res.data;
                                 this.dataLoaded.expenseCategories = true;
                             }
-                            if (!hasPrimaryRequest) this.loading = false;
+                            if (showLoading && !hasPrimaryRequest) this.loading = false;
                         })
                         .getExpenseCategories();
                 }
-                if (needsProjects) this.fetchDevelopmentProjects(force);
+                if (needsProjects) this.fetchDevelopmentProjects(force, showLoading);
             },
 
-            fetchDonations(force = false) {
+            fetchDonations(force = false, showLoading = false) {
                 const needsList = force || !this.dataLoaded.donationList;
                 const needsProjects = force || !this.dataLoaded.developmentProjects;
                 if (!needsList && !needsProjects) return;
-                this.loading = true;
+                if (showLoading) this.loading = true;
                 if (needsList) {
                     google.script.run
                         .withSuccessHandler(res => {
-                            this.loading = false;
+                            if (showLoading) this.loading = false;
                             if (res.ok) {
                                 this.donationList = res.data;
                                 this.dataLoaded.donationList = true;
@@ -306,15 +306,15 @@
                         .withFailureHandler(err => this.handleFailure(err))
                         .getDonations(100);
                 }
-                if (needsProjects) this.fetchDevelopmentProjects(force);
+                if (needsProjects) this.fetchDevelopmentProjects(force, showLoading);
             },
 
-            fetchCash(force = false) {
+            fetchCash(force = false, showLoading = false) {
                 if (!force && this.dataLoaded.cashTransactions) return;
-                this.loading = true;
+                if (showLoading) this.loading = true;
                 google.script.run
                     .withSuccessHandler(res => {
-                        this.loading = false;
+                        if (showLoading) this.loading = false;
                         if (res.ok) {
                             this.cashTransactions = res.data;
                             this.dataLoaded.cashTransactions = true;
@@ -326,13 +326,12 @@
                     .getCashTransactions(100);
             },
 
-            fetchDevelopmentProjects(force = false) {
+            fetchDevelopmentProjects(force = false, showLoading = false) {
                 if (!force && this.dataLoaded.developmentProjects) return;
-                const showLoading = force || !this.dataLoaded.developmentProjects;
                 if (showLoading) this.loading = true;
                 google.script.run
                     .withSuccessHandler(res => {
-                        this.loading = false;
+                        if (showLoading) this.loading = false;
                         if (res.ok) {
                             this.developmentProjects = res.data;
                             this.dataLoaded.developmentProjects = true;
@@ -344,12 +343,12 @@
                     .getDevelopmentProjects();
             },
 
-            fetchOperationalReports(force = false) {
+            fetchOperationalReports(force = false, showLoading = false) {
                 if (!force && this.dataLoaded.operationalReport) return;
-                this.loading = true;
+                if (showLoading) this.loading = true;
                 google.script.run
                     .withSuccessHandler(res => {
-                        this.loading = false;
+                        if (showLoading) this.loading = false;
                         if (res.ok) {
                             this.operationalReport = res.data;
                             this.dataLoaded.operationalReport = true;
@@ -361,12 +360,12 @@
                     .getOperationalReportData();
             },
 
-            fetchJournals(force = false) {
+            fetchJournals(force = false, showLoading = false) {
                 if (!force && this.dataLoaded.journalEntries) return;
-                this.loading = true;
+                if (showLoading) this.loading = true;
                 google.script.run
                     .withSuccessHandler(res => {
-                        this.loading = false;
+                        if (showLoading) this.loading = false;
                         if (res.ok) {
                             this.journalEntries = res.data;
                             this.dataLoaded.journalEntries = true;
@@ -378,12 +377,12 @@
                     .getJournalSummaries(50);
             },
 
-            fetchReports(force = false) {
+            fetchReports(force = false, showLoading = false) {
                 if (!force && this.dataLoaded.reportData) return;
-                this.loading = true;
+                if (showLoading) this.loading = true;
                 google.script.run
                     .withSuccessHandler(res => {
-                        this.loading = false;
+                        if (showLoading) this.loading = false;
                         if (res.ok) {
                             this.reportData = res.data;
                             this.dataLoaded.reportData = true;
@@ -395,13 +394,13 @@
                     .getAccountingReportData();
             },
 
-            fetchActivityReport(force = false) {
+            fetchActivityReport(force = false, showLoading = false) {
                 const activityKey = `${this.activityFilter.month}-${this.activityFilter.year}`;
                 if (!force && this.dataLoaded.activityReportKey === activityKey) return;
-                this.loading = true;
+                if (showLoading) this.loading = true;
                 google.script.run
                     .withSuccessHandler(res => {
-                        this.loading = false;
+                        if (showLoading) this.loading = false;
                         if (res.ok) {
                             this.activityReport = res.data;
                             this.dataLoaded.activityReportKey = activityKey;
@@ -925,23 +924,23 @@
             openView(viewName) {
                 this.view = viewName;
                 this.mobileMenuOpen = false;
-                if (viewName === 'santri') this.fetchSantri();
-                if (viewName === 'billing') this.fetchSantri();
-                if (viewName === 'arrears') this.fetchArrears();
-                if (viewName === 'payments') this.fetchPaymentOrders();
-                if (viewName === 'expenses') this.fetchExpenses();
-                if (viewName === 'donations') this.fetchDonations();
+                if (viewName === 'santri') this.fetchSantri(false, false);
+                if (viewName === 'billing') this.fetchSantri(false, false);
+                if (viewName === 'arrears') this.fetchArrears(false, false);
+                if (viewName === 'payments') this.fetchPaymentOrders(false, false);
+                if (viewName === 'expenses') this.fetchExpenses(false, false);
+                if (viewName === 'donations') this.fetchDonations(false, false);
                 if (viewName === 'cash') {
-                    this.fetchCash();
-                    this.fetchOperationalReports();
+                    this.fetchCash(false, false);
+                    this.fetchOperationalReports(false, false);
                 }
-                if (viewName === 'development') this.fetchDevelopmentProjects();
+                if (viewName === 'development') this.fetchDevelopmentProjects(false, false);
                 if (viewName === 'reports') {
-                    this.fetchOperationalReports();
-                    this.fetchActivityReport();
+                    this.fetchOperationalReports(false, false);
+                    this.fetchActivityReport(false, false);
                 }
-                if (viewName === 'journals') this.fetchJournals();
-                if (viewName === 'accountingReports') this.fetchReports();
+                if (viewName === 'journals') this.fetchJournals(false, false);
+                if (viewName === 'accountingReports') this.fetchReports(false, false);
                 this.refreshIcons();
             },
 
