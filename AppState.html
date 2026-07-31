@@ -697,7 +697,8 @@
                     if (!container) return;
                     container.innerHTML = '';
                     if (!this.qrisData.qr_text) {
-                        container.innerHTML = '<div class="text-center py-8"><div class="w-8 h-8 border-4 border-[#dbe5ef] border-t-primary rounded-full animate-spin mx-auto mb-3"></div><p class="text-sm text-slate-500">Memuat QRIS dinamis...</p></div>';
+                        const note = this.qrisData.note || 'Memuat QRIS dinamis...';
+                        container.innerHTML = `<div class="text-center py-8 px-4"><div class="w-8 h-8 border-4 border-[#dbe5ef] border-t-primary rounded-full animate-spin mx-auto mb-3"></div><p class="text-sm ${note.startsWith('Gagal') ? 'text-danger' : 'text-slate-500'}">${note}</p></div>`;
                         return;
                     }
                     if (window.QRCode) {
@@ -722,16 +723,20 @@
                 google.script.run
                     .withSuccessHandler(res => {
                         if (!res.ok) {
+                            this.qrisData.note = `Gagal: ${res.message}`;
+                            this.qrisData.qr_text = '';
+                            this.renderQrisCode();
                             this.notify(res.message, 'error');
-                            this.closeQrisModal();
                             return;
                         }
                         this.qrisData = res.data || this.qrisData;
                         this.renderQrisCode();
                     })
                     .withFailureHandler(err => {
+                        this.qrisData.note = `Gagal: ${err?.message || err?.toString?.() || 'QRIS tidak dapat dibuat'}`;
+                        this.qrisData.qr_text = '';
+                        this.renderQrisCode();
                         this.handleFailure(err);
-                        this.closeQrisModal();
                     })
                     .generateDynamicQrisForSantri(santri.id_santri);
             },
