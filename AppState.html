@@ -15,7 +15,7 @@
             auth: { username: '', password: '' },
             stats: { cashBalance: 0, incomeThisMonth: 0, expenseThisMonth: 0, totalArrears: 0, donationThisMonth: 0, activeSantriCount: 0 },
             dashboardData: { incomeVsExpense: [], topExpenses: [], unpaidBills: [] },
-            settings: { school_name: '', logo_url: '', ...INITIAL_APP_SETTINGS },
+            settings: { school_name: '', logo_url: '', payment_methods: '', ...INITIAL_APP_SETTINGS },
             dataLoaded: {
                 santri: false,
                 arrears: false,
@@ -448,6 +448,21 @@
                 ].some(value => String(value || '').toLowerCase().includes(keyword)));
             },
 
+            get paymentMethodOptions() {
+                const defaults = ['Tunai', 'Transfer Bank', 'QRIS', 'DANA', 'ShopeePay', 'GoPay'];
+                const rawValue = String(this.settings.payment_methods || '').trim();
+                const options = rawValue
+                    ? rawValue.split(',').map(item => item.trim()).filter(Boolean)
+                    : defaults;
+                const deduped = [];
+                options.forEach(option => {
+                    if (!deduped.some(item => item.toLowerCase() === option.toLowerCase())) {
+                        deduped.push(option);
+                    }
+                });
+                return deduped.length ? deduped : defaults;
+            },
+
             getFilteredArrears() {
                 if (!this.selectedClassFilter) return this.arrearsList;
                 return this.arrearsList.filter(a => a.kelas === this.selectedClassFilter);
@@ -545,7 +560,14 @@
 
             openPaymentModal(santri) {
                 this.selectedSantri = santri;
-                this.paymentData = { id_santri: santri.id_santri, id_billing: '', amount: '', method: 'Tunai', proofBase64: '', penerima: this.user.username };
+                this.paymentData = {
+                    id_santri: santri.id_santri,
+                    id_billing: '',
+                    amount: '',
+                    method: this.paymentMethodOptions[0] || 'Tunai',
+                    proofBase64: '',
+                    penerima: this.user.username
+                };
                 this.loading = true;
                 google.script.run
                     .withSuccessHandler(res => {

@@ -396,8 +396,8 @@ function recordDirectPayment(payment) {
     seedOperationalDefaults();
 
     const method = normalizeText(payment.method);
-    if (['Tunai', 'Transfer'].indexOf(method) === -1) {
-      throw new Error('Pembayaran langsung hanya mendukung Tunai atau Transfer');
+    if (!isConfiguredPaymentMethod(method)) {
+      throw new Error('Metode pembayaran belum diaktifkan di Pengaturan');
     }
 
     const bill = getSheetData('billings').find(item => item.id_billing === payment.id_billing);
@@ -470,7 +470,7 @@ function updatePayment(paymentId, payment) {
     }
 
     const method = normalizeText(payment.method) || transaction.metode || 'Tunai';
-    if (['Tunai', 'Transfer', 'QRIS'].indexOf(method) === -1) throw new Error('Metode pembayaran tidak valid');
+    if (!isConfiguredPaymentMethod(method)) throw new Error('Metode pembayaran tidak valid');
 
     updateSheetRowByKey('transactions', 'id_transaksi', paymentId, {
       tanggal: payment.date ? new Date(payment.date) : transaction.tanggal,

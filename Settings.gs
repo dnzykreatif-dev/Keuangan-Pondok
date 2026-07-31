@@ -36,6 +36,28 @@ function getAppSettingValue(key, fallback = '') {
   return settings.data && settings.data[key] !== undefined ? settings.data[key] : fallback;
 }
 
+function getConfiguredPaymentMethods() {
+  const rawValue = getAppSettingValue('payment_methods', '');
+  const defaults = ['Tunai', 'Transfer Bank', 'QRIS', 'DANA', 'ShopeePay', 'GoPay'];
+  const values = normalizeText(rawValue)
+    ? rawValue.split(',').map(item => normalizeText(item)).filter(Boolean)
+    : defaults;
+
+  const deduped = [];
+  values.forEach(item => {
+    if (!deduped.some(existing => existing.toLowerCase() === item.toLowerCase())) {
+      deduped.push(item);
+    }
+  });
+  return deduped.length ? deduped : defaults;
+}
+
+function isConfiguredPaymentMethod(method) {
+  const normalized = normalizeText(method).toLowerCase();
+  if (!normalized) return false;
+  return getConfiguredPaymentMethods().some(item => normalizeText(item).toLowerCase() === normalized);
+}
+
 function updateAppSetting(key, value) {
   const sheet = getSheetOrThrow('settings');
   const rows = sheet.getDataRange().getValues();

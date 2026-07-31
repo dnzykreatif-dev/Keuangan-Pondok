@@ -21,9 +21,9 @@
             <div>
                 <label class="block text-sm mb-1 text-slate-500">Metode Pembayaran</label>
                 <select x-model="paymentData.method" class="w-full p-2.5 outline-none focus:ring-1 focus:ring-primary">
-                    <option>Tunai</option>
-                    <option>Transfer</option>
-                    <option>QRIS</option>
+                    <template x-for="method in paymentMethodOptions" :key="method">
+                        <option :value="method" x-text="method"></option>
+                    </template>
                 </select>
             </div>
             <div x-show="paymentData.method !== 'QRIS'">
@@ -31,7 +31,7 @@
                 <input type="file" @change="handleFileUpload($event, paymentData)" class="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-bold file:bg-primary/10 file:text-primary">
             </div>
             <div>
-                <p class="text-xs text-slate-500 mb-2 italic" x-text="paymentData.method === 'QRIS' ? 'Sistem akan membuat QRIS dinamis lokal dari payload QRIS di pengaturan.' : 'Tunai dan Transfer langsung menandai tagihan lunas, mencatat kas masuk, dan membuat jurnal otomatis.'"></p>
+                <p class="text-xs text-slate-500 mb-2 italic" x-text="paymentData.method === 'QRIS' ? 'Sistem akan membuat QRIS dinamis lokal dari payload QRIS di pengaturan.' : 'Metode lain akan dicatat manual sebagai pembayaran yang diterima.'"></p>
             </div>
             <div class="flex gap-4 mt-8">
                 <button @click="showPaymentModal = false" class="flex-1 btn-soft py-3 rounded-lg">Batal</button>
