@@ -22,6 +22,15 @@
                         </div>
                     </div>
                 </div>
+                <div>
+                    <label class="block text-sm font-medium text-slate-500 mb-2">QRIS Payload</label>
+                    <div class="space-y-2">
+                        <textarea x-model="settings.qris_id" rows="3" class="w-full px-4 py-3 outline-none focus:border-primary font-mono text-sm" placeholder="Tempel payload QRIS di sini"></textarea>
+                        <div class="flex justify-end">
+                            <button @click="saveSetting('qris_id', settings.qris_id)" class="bg-primary text-white px-4 py-2 rounded-xl text-sm font-semibold">Simpan QRIS</button>
+                        </div>
+                    </div>
+                </div>
                 <div class="p-4 bg-[#f5f8fc] border border-[#dbe5ef] rounded-2xl">
                     <p class="text-sm text-zinc-400">Level 1 menampilkan operasional pondok. Jurnal dan laporan akuntansi tetap tersedia di `Mode Akuntansi` untuk Admin.</p>
                 </div>

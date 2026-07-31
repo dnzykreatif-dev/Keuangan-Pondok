@@ -68,10 +68,12 @@
             unpaidBills: [],
             showAddSantriModal: false,
             showPaymentModal: false,
+            showQrisModal: false,
             selectedSantri: null,
             newSantri: { nama: '', kelas: '', kontak_ortu: '' },
             genBill: { month: 'Januari', year: new Date().getFullYear(), nominal: 500000, targetMode: 'ALL', classFilter: '', studentFilter: '' },
             paymentData: { id_santri: '', id_billing: '', amount: 0, method: 'Tunai', proofBase64: '', penerima: '' },
+            qrisData: { student_name: '', billing_label: '', amount: 0, qr_text: '', note: '' },
             newExpense: { date: new Date().toISOString().slice(0, 10), category: 'Dapur', amount: '', supplier: '', method: 'Tunai', description: '', proofBase64: '', project_id: '' },
             newDonation: { date: new Date().toISOString().slice(0, 10), donor_name: '', phone: '', type: 'Donasi', status: 'Masuk', amount: '', method: 'Transfer', description: '', proofBase64: '', project_id: '' },
             newProject: { name: '', target_budget: '', description: '', status: 'Aktif', start_date: new Date().toISOString().slice(0, 10), end_date: '' },
@@ -577,14 +579,21 @@
                 const remainingAmount = Number(bill.remaining_amount || bill.nominal);
                 if (!paymentAmount || paymentAmount <= 0) return this.notify("Nominal pembayaran wajib lebih dari nol", "error");
                 if (paymentAmount > remainingAmount) return this.notify("Nominal pembayaran melebihi sisa tagihan", "error");
-                this.loading = true;
 
                 const runner = google.script.run
                     .withSuccessHandler(res => {
                         this.loading = false;
                         if (res.ok) {
-                            if (res.payment_url) window.open(res.payment_url, '_blank');
-                            this.notify(res.message || (this.paymentData.method === 'QRIS' ? "Payment order QRIS dibuat" : "Pembayaran berhasil dicatat"));
+                            if (this.paymentData.method === 'QRIS') {
+                                this.qrisData = res.data || this.qrisData;
+                                this.showPaymentModal = false;
+                                this.showQrisModal = true;
+                                this.renderQrisCode();
+                                this.notify('QRIS dinamis berhasil dibuat');
+                                return;
+                            }
+
+                            this.notify(res.message || "Pembayaran berhasil dicatat");
                             this.showPaymentModal = false;
                             this.invalidateData('paymentOrders', 'cashTransactions', 'arrears', 'santri', 'operationalReport', 'reportData', 'journalEntries', 'activityReport');
                             this.fetchDashboard();
@@ -602,8 +611,9 @@
                     .withFailureHandler(err => this.handleFailure(err));
 
                 if (this.paymentData.method === 'QRIS') {
-                    runner.createPaymentOrder(this.paymentData);
+                    runner.generateDynamicQrisForBilling(this.paymentData.id_billing);
                 } else {
+                    this.loading = true;
                     runner.recordDirectPayment(this.paymentData);
                 }
             },
@@ -681,34 +691,61 @@
                     .generateMonthlyBills(this.genBill.month, this.genBill.year, this.genBill.nominal, classFilter, studentFilter);
             },
 
-            sendPaymentLink(santri) {
-                const phone = String(santri.kontak_ortu || '').replace(/[^\d]/g, '');
-                if (!phone) return this.notify("Kontak orang tua/wali belum diisi", "error");
+            renderQrisCode() {
+                this.$nextTick(() => {
+                    const container = document.getElementById('qris-code');
+                    if (!container) return;
+                    container.innerHTML = '';
+                    if (!this.qrisData.qr_text) {
+                        container.innerHTML = '<div class="text-center py-8"><div class="w-8 h-8 border-4 border-[#dbe5ef] border-t-primary rounded-full animate-spin mx-auto mb-3"></div><p class="text-sm text-slate-500">Memuat QRIS dinamis...</p></div>';
+                        return;
+                    }
+                    if (window.QRCode) {
+                        new QRCode(container, {
+                            text: this.qrisData.qr_text,
+                            width: 240,
+                            height: 240,
+                            colorDark: '#111827',
+                            colorLight: '#ffffff',
+                            correctLevel: QRCode.CorrectLevel.M
+                        });
+                    } else {
+                        container.textContent = this.qrisData.qr_text;
+                    }
+                });
+            },
 
-                const waWindow = window.open('', '_blank');
-                if (waWindow) {
-                    waWindow.document.write('<p style="font-family:sans-serif;padding:16px">Menyiapkan pesan WhatsApp...</p>');
-                    waWindow.document.close();
-                }
-
-                this.loading = true;
+            openQrisModal(santri) {
+                if (!santri) return;
+                this.qrisData = { student_name: santri.nama || '', billing_label: '', amount: 0, qr_text: '', note: 'Memuat QRIS dinamis...' };
+                this.showQrisModal = true;
                 google.script.run
                     .withSuccessHandler(res => {
-                        this.loading = false;
-                        if (!res.ok) return this.notify(res.message, 'error');
-                        const paymentLink = res.redirect_url || res.link || res.payment_url;
-                        const payloadText = paymentLink || res.qr_string || '(tautan QRIS belum tersedia)';
-                        const msg = `Assalamu'alaikum Wr. Wb.\n\nMohon Bapak/Ibu melakukan pembayaran tagihan an. *${santri.nama}* melalui QRIS/link resmi berikut:\n\n${payloadText}\n\nTerima kasih.`;
-                        const waUrl = `https://wa.me/${phone}?text=${encodeURIComponent(msg)}`;
-                        if (waWindow) {
-                            waWindow.location.href = waUrl;
-                        } else {
-                            window.open(waUrl, '_blank');
+                        if (!res.ok) {
+                            this.notify(res.message, 'error');
+                            this.closeQrisModal();
+                            return;
                         }
-                        this.notify("Link pembayaran dikirim ke WA");
+                        this.qrisData = res.data || this.qrisData;
+                        this.renderQrisCode();
                     })
-                    .withFailureHandler(err => this.handleFailure(err))
-                    .generatePaymentLink(santri.id_santri);
+                    .withFailureHandler(err => {
+                        this.handleFailure(err);
+                        this.closeQrisModal();
+                    })
+                    .generateDynamicQrisForSantri(santri.id_santri);
+            },
+
+            closeQrisModal() {
+                this.showQrisModal = false;
+                this.qrisData = { student_name: '', billing_label: '', amount: 0, qr_text: '', note: '' };
+            },
+
+            copyQrisPayload() {
+                if (!this.qrisData.qr_text) return this.notify("QR belum tersedia", "error");
+                navigator.clipboard.writeText(this.qrisData.qr_text)
+                    .then(() => this.notify("Payload QRIS disalin"))
+                    .catch(() => this.notify("Gagal menyalin payload", "error"));
             },
 
             handleAddExpense() {

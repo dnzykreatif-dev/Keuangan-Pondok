@@ -1,0 +1,47 @@
+<div x-show="showQrisModal" x-cloak class="fixed inset-0 bg-black/70 backdrop-blur-sm z-[70] flex items-center justify-center p-4" @click.self="closeQrisModal()">
+    <div class="panel w-full max-w-md rounded-3xl p-6">
+        <div class="flex items-center justify-between mb-5">
+            <div>
+                <h3 class="text-2xl font-semibold">QRIS Dinamis</h3>
+                <p class="text-sm text-zinc-500">Tagihan otomatis dari data santri</p>
+            </div>
+            <button type="button" @click="closeQrisModal()" class="btn-action btn-action-ghost btn-action-sm" aria-label="Tutup">
+                <i data-lucide="x" class="w-4 h-4"></i>
+            </button>
+        </div>
+
+        <div class="space-y-4">
+            <div class="p-4 rounded-2xl bg-[#f5f8fc] border border-[#dbe5ef]">
+                <p class="text-xs uppercase tracking-[0.2em] text-zinc-500">Santri</p>
+                <p class="text-lg font-semibold" x-text="qrisData.student_name || '-'"></p>
+                <p class="text-sm text-zinc-500 mt-1" x-text="qrisData.billing_label ? ('Tagihan ' + qrisData.billing_label) : '-'"></p>
+            </div>
+
+            <div class="panel rounded-2xl p-4 flex items-center justify-center min-h-[280px]">
+                <div id="qris-code" class="w-full flex items-center justify-center"></div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-3">
+                <div class="p-4 rounded-2xl bg-[#f5f8fc] border border-[#dbe5ef]">
+                    <p class="text-xs uppercase tracking-[0.2em] text-zinc-500">Nominal</p>
+                    <p class="text-lg font-semibold" x-text="formatCurrency(qrisData.amount)"></p>
+                </div>
+                <div class="p-4 rounded-2xl bg-[#f5f8fc] border border-[#dbe5ef]">
+                    <p class="text-xs uppercase tracking-[0.2em] text-zinc-500">Status</p>
+                    <p class="text-sm font-semibold text-success" x-text="qrisData.note || 'Siap dipindai'"></p>
+                </div>
+            </div>
+
+            <div class="flex flex-col sm:flex-row gap-3 pt-1">
+                <button type="button" @click="copyQrisPayload()" class="btn-action btn-action-primary flex-1">
+                    <i data-lucide="copy" class="w-4 h-4"></i>
+                    <span>Salin Payload</span>
+                </button>
+                <button type="button" @click="closeQrisModal()" class="btn-action btn-action-ghost flex-1">
+                    <i data-lucide="x" class="w-4 h-4"></i>
+                    <span>Tutup</span>
+                </button>
+            </div>
+        </div>
+    </div>
+</div>

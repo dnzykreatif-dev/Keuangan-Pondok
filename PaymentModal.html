@@ -31,7 +31,7 @@
                 <input type="file" @change="handleFileUpload($event, paymentData)" class="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-bold file:bg-primary/10 file:text-primary">
             </div>
             <div>
-                <p class="text-xs text-slate-500 mb-2 italic" x-text="paymentData.method === 'QRIS' ? 'Sistem akan membuat payment order QRIS dinamis. Mode default saat ini adalah mock sampai provider/PJSP diaktifkan.' : 'Tunai dan Transfer langsung menandai tagihan lunas, mencatat kas masuk, dan membuat jurnal otomatis.'"></p>
+                <p class="text-xs text-slate-500 mb-2 italic" x-text="paymentData.method === 'QRIS' ? 'Sistem akan membuat QRIS dinamis lokal dari payload QRIS di pengaturan.' : 'Tunai dan Transfer langsung menandai tagihan lunas, mencatat kas masuk, dan membuat jurnal otomatis.'"></p>
             </div>
             <div class="flex gap-4 mt-8">
                 <button @click="showPaymentModal = false" class="flex-1 btn-soft py-3 rounded-lg">Batal</button>

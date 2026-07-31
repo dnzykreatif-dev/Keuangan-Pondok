@@ -13,6 +13,12 @@ function getAppSettings() {
   }
 }
 
+function getAppSettingValue(key, fallback = '') {
+  const settings = getAppSettings();
+  if (!settings.ok) return fallback;
+  return settings.data && settings.data[key] !== undefined ? settings.data[key] : fallback;
+}
+
 function updateAppSetting(key, value) {
   const sheet = getSheetOrThrow('settings');
   const rows = sheet.getDataRange().getValues();
@@ -30,6 +36,7 @@ function updateAppSetting(key, value) {
     sheet.appendRow([key, value]);
   }
 
+  invalidateBootstrapCache();
   return { ok: true };
 }
 
