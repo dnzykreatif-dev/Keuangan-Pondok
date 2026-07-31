@@ -18,7 +18,7 @@
                             <template x-if="!settings.logo_url"><i data-lucide="image" class="w-8 h-8 text-slate-400"></i></template>
                         </div>
                         <div class="flex-1">
-                            <input type="file" @change="handleLogoUpload" class="block w-full text-sm text-zinc-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-bold file:bg-primary/10 file:text-primary hover:file:bg-primary/20 cursor-pointer">
+                            <input type="file" @change="handleLogoUpload($event)" class="block w-full text-sm text-zinc-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-bold file:bg-primary/10 file:text-primary hover:file:bg-primary/20 cursor-pointer">
                         </div>
                     </div>
                 </div>

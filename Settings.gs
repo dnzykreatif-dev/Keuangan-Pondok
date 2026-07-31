@@ -1,10 +1,27 @@
+function toDirectImageUrl(url) {
+  const text = normalizeText(url);
+  if (!text) return '';
+
+  const driveFileMatch = text.match(/\/d\/([a-zA-Z0-9_-]+)/);
+  if (driveFileMatch && driveFileMatch[1]) {
+    return `https://drive.google.com/uc?export=view&id=${driveFileMatch[1]}`;
+  }
+
+  const driveQueryMatch = text.match(/[?&]id=([a-zA-Z0-9_-]+)/);
+  if (driveQueryMatch && driveQueryMatch[1]) {
+    return `https://drive.google.com/uc?export=view&id=${driveQueryMatch[1]}`;
+  }
+
+  return text;
+}
+
 function getAppSettings() {
   try {
     const settingsRows = getSheetData('settings');
     const settings = {};
 
     settingsRows.forEach(row => {
-      settings[row.key] = row.value;
+      settings[row.key] = row.key === 'logo_url' ? toDirectImageUrl(row.value) : row.value;
     });
 
     return { ok: true, data: settings };
@@ -48,7 +65,7 @@ function uploadFileToDrive(base64, filename) {
     const blob = Utilities.newBlob(bytes, contentType, filename);
     const file = folder.createFile(blob);
     file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
-    return file.getUrl();
+    return `https://drive.google.com/uc?export=view&id=${file.getId()}`;
   } catch (error) {
     return 'Error uploading: ' + error.toString();
   }
@@ -57,8 +74,9 @@ function uploadFileToDrive(base64, filename) {
 function saveSchoolLogo(base64) {
   const url = uploadFileToDrive(base64, 'school_logo.png');
   if (url.startsWith('http')) {
-    updateAppSetting('logo_url', url);
-    return { ok: true, url };
+    const directUrl = toDirectImageUrl(url);
+    updateAppSetting('logo_url', directUrl);
+    return { ok: true, url: directUrl };
   }
   return { ok: false, message: url };
 }
