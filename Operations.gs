@@ -32,6 +32,43 @@ function currentMonthKey() {
   return Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyy-MM');
 }
 
+function getDashboardMonthNames() {
+  return ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+}
+
+function getDashboardMonthIndex(monthName) {
+  return getDashboardMonthNames().findIndex(name => String(name).toLowerCase() === String(monthName || '').toLowerCase());
+}
+
+function resolveDashboardPeriod(mode, month, year) {
+  const normalizedMode = String(mode || 'ALL').toUpperCase();
+  if (normalizedMode !== 'MONTH') {
+    return {
+      mode: 'ALL',
+      month: '',
+      year: '',
+      monthKey: '',
+      label: 'Seluruh data',
+      scopeKey: 'all'
+    };
+  }
+
+  const monthIndex = getDashboardMonthIndex(month);
+  const safeMonthIndex = monthIndex >= 0 ? monthIndex : new Date().getMonth();
+  const safeMonth = getDashboardMonthNames()[safeMonthIndex];
+  const safeYear = Number(year) || new Date().getFullYear();
+  const monthKey = `${safeYear}-${String(safeMonthIndex + 1).padStart(2, '0')}`;
+
+  return {
+    mode: 'MONTH',
+    month: safeMonth,
+    year: safeYear,
+    monthKey,
+    label: `${safeMonth} ${safeYear}`,
+    scopeKey: monthKey
+  };
+}
+
 function recordCashTransaction(data) {
   seedOperationalDefaults();
 
@@ -147,36 +184,43 @@ function getTopExpenses(expenses, limit) {
     .slice(0, limit || 5);
 }
 
-function getOperationalDashboardData() {
-  return withBootstrapCache('dashboard', 180, function () {
+function getOperationalDashboardData(mode, month, year) {
+  const period = resolveDashboardPeriod(mode, month, year);
+  return withBootstrapCache(`dashboard:${period.scopeKey}`, 180, function () {
     seedOperationalDefaults();
 
-    const monthKey = currentMonthKey();
     const cashRows = getSheetData('cash_transactions');
-    const monthCashRows = cashRows.filter(row => toMonthKey(row.date) === monthKey);
+    const periodCashRows = period.mode === 'MONTH'
+      ? cashRows.filter(row => toMonthKey(row.date) === period.monthKey)
+      : cashRows;
     const billings = getSheetData('billings');
     const santri = getSheetData('santri');
     const donations = getSheetData('donations');
     const expenses = getSheetData('expenses');
-    const monthDonations = donations.filter(row => row.status === 'Masuk' && toMonthKey(row.date) === monthKey);
-    const monthExpenses = expenses.filter(row => toMonthKey(row.date) === monthKey);
+    const periodDonations = period.mode === 'MONTH'
+      ? donations.filter(row => row.status === 'Masuk' && toMonthKey(row.date) === period.monthKey)
+      : donations.filter(row => row.status === 'Masuk');
+    const periodExpenses = period.mode === 'MONTH'
+      ? expenses.filter(row => toMonthKey(row.date) === period.monthKey)
+      : expenses;
     const cashSummary = calculateCashSummary(cashRows);
 
-    const incomeThisMonth = monthCashRows
+    const incomeThisMonth = periodCashRows
       .filter(row => row.direction === 'Masuk')
       .reduce((sum, row) => sum + normalizeNumber(row.amount), 0);
-    const expenseThisMonth = monthCashRows
+    const expenseThisMonth = periodCashRows
       .filter(row => row.direction === 'Keluar')
       .reduce((sum, row) => sum + normalizeNumber(row.amount), 0);
     const totalArrears = billings
       .filter(billing => billing.status === 'Belum Lunas')
       .map(enrichBillWithPaymentStatus)
       .reduce((sum, billing) => sum + normalizeNumber(billing.remaining_amount), 0);
-    const donationThisMonth = monthDonations.reduce((sum, donation) => sum + normalizeNumber(donation.amount), 0);
+    const donationThisMonth = periodDonations.reduce((sum, donation) => sum + normalizeNumber(donation.amount), 0);
 
     return {
       ok: true,
       data: {
+        period,
         stats: {
           cashBalance: cashSummary.balance,
           incomeThisMonth,
@@ -192,15 +236,15 @@ function getOperationalDashboardData() {
           { label: 'Pemasukan', amount: incomeThisMonth },
           { label: 'Pengeluaran', amount: expenseThisMonth }
         ],
-        topExpenses: getTopExpenses(monthExpenses, 5),
+        topExpenses: getTopExpenses(periodExpenses, 5),
         unpaidBills: getArrearsRecap().data.slice(0, 10)
       }
     };
   });
 }
 
-function getDashboardData() {
-  return getOperationalDashboardData();
+function getDashboardData(mode, month, year) {
+  return getOperationalDashboardData(mode, month, year);
 }
 
 function getBootstrapData() {

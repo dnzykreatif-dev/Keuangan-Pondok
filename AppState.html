@@ -15,8 +15,10 @@
             auth: { username: '', password: '' },
             stats: { cashBalance: 0, incomeThisMonth: 0, expenseThisMonth: 0, totalArrears: 0, donationThisMonth: 0, activeSantriCount: 0 },
             dashboardData: { incomeVsExpense: [], topExpenses: [], unpaidBills: [] },
+            dashboardFilter: { mode: 'ALL', month: ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'][new Date().getMonth()], year: new Date().getFullYear() },
             settings: { school_name: '', logo_url: '', payment_methods: '', ...INITIAL_APP_SETTINGS },
             dataLoaded: {
+                dashboardKey: '',
                 santri: false,
                 arrears: false,
                 paymentOrders: false,
@@ -119,6 +121,7 @@
                             if (bootstrap.dashboard) {
                                 this.stats = bootstrap.dashboard.stats || this.stats;
                                 this.dashboardData = bootstrap.dashboard;
+                                this.dataLoaded.dashboardKey = this.getDashboardRequestKey();
                             }
                             if (Array.isArray(bootstrap.developmentProjects)) {
                                 this.developmentProjects = bootstrap.developmentProjects;
@@ -142,6 +145,10 @@
 
             invalidateData(...keys) {
                 keys.forEach(key => {
+                    if (key === 'dashboard') {
+                        this.dataLoaded.dashboardKey = '';
+                        return;
+                    }
                     if (key === 'activityReport') {
                         this.dataLoaded.activityReportKey = '';
                         return;
@@ -193,15 +200,64 @@
                 this.notify(err.message || err.toString(), 'error');
             },
 
-            fetchDashboard() {
+            getMonthOptions() {
+                return ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+            },
+
+            getDashboardRequestKey() {
+                const mode = String(this.dashboardFilter.mode || 'ALL').toUpperCase();
+                if (mode === 'ALL') return 'ALL';
+                return `${mode}:${this.dashboardFilter.month || ''}:${this.dashboardFilter.year || ''}`;
+            },
+
+            getDashboardPeriodLabel() {
+                if (String(this.dashboardFilter.mode || 'ALL').toUpperCase() === 'ALL') return 'Seluruh data';
+                return `${this.dashboardFilter.month} ${this.dashboardFilter.year}`;
+            },
+
+            getDashboardMetricLabel(baseLabel) {
+                if (String(this.dashboardFilter.mode || 'ALL').toUpperCase() === 'ALL') return `${baseLabel} Total`;
+                return `${baseLabel} ${this.dashboardFilter.month} ${this.dashboardFilter.year}`;
+            },
+
+            setCurrentDashboardMonth() {
+                this.dashboardFilter.mode = 'MONTH';
+                this.dashboardFilter.month = this.getMonthOptions()[new Date().getMonth()];
+                this.dashboardFilter.year = new Date().getFullYear();
+                this.fetchDashboard(true);
+            },
+
+            setDashboardFilter(mode, month = null, year = null) {
+                const normalizedMode = String(mode || 'ALL').toUpperCase();
+                this.dashboardFilter.mode = normalizedMode === 'MONTH' ? 'MONTH' : 'ALL';
+                if (this.dashboardFilter.mode === 'MONTH') {
+                    this.dashboardFilter.month = month || this.dashboardFilter.month || this.getMonthOptions()[new Date().getMonth()];
+                    this.dashboardFilter.year = year || this.dashboardFilter.year || new Date().getFullYear();
+                }
+                this.fetchDashboard(true);
+            },
+
+            applyDashboardMonthFilter() {
+                this.setDashboardFilter('MONTH', this.dashboardFilter.month, this.dashboardFilter.year);
+            },
+
+            fetchDashboard(force = false, showLoading = false) {
+                const dashboardKey = this.getDashboardRequestKey();
+                if (!force && this.dataLoaded.dashboardKey === dashboardKey) return;
+                if (showLoading) this.loading = true;
                 google.script.run
                     .withSuccessHandler(res => {
+                        if (showLoading) this.loading = false;
                         if (res.ok) {
                             this.stats = res.data.stats;
                             this.dashboardData = res.data;
+                            this.dataLoaded.dashboardKey = dashboardKey;
                         }
+                        else this.notify(res.message, 'error');
+                        this.refreshIcons();
                     })
-                    .getDashboardData();
+                    .withFailureHandler(err => this.handleFailure(err))
+                    .getDashboardData(this.dashboardFilter.mode, this.dashboardFilter.month, this.dashboardFilter.year);
             },
 
             fetchSantri(force = false, showLoading = false) {
@@ -488,7 +544,7 @@
 
             refreshAfterDataChange(...keys) {
                 this.invalidateData(...keys, 'cashTransactions', 'operationalReport', 'reportData', 'journalEntries', 'activityReport');
-                this.fetchDashboard();
+                this.fetchDashboard(true);
                 if (this.view === 'santri') this.fetchSantri(true);
                 if (this.view === 'arrears') this.fetchArrears(true);
                 if (this.view === 'expenses') this.fetchExpenses(true);
@@ -503,7 +559,7 @@
             },
 
             refreshDashboardSilently() {
-                window.setTimeout(() => this.fetchDashboard(), 0);
+                window.setTimeout(() => this.fetchDashboard(true), 0);
             },
 
             removeLocalItem(listName, keyName, keyValue) {
@@ -631,7 +687,7 @@
                             this.notify(res.message || "Pembayaran berhasil dicatat");
                             this.showPaymentModal = false;
                             this.invalidateData('paymentOrders', 'cashTransactions', 'arrears', 'santri', 'operationalReport', 'reportData', 'journalEntries', 'activityReport');
-                            this.fetchDashboard();
+                            this.fetchDashboard(true);
                             if (this.view === 'payments') this.fetchPaymentOrders(true);
                             if (this.view === 'santri') this.fetchSantri(true);
                             if (this.view === 'arrears') this.fetchArrears(true);
@@ -724,7 +780,7 @@
                         this.notify(res.message);
                         this.invalidateData('arrears', 'operationalReport', 'reportData', 'journalEntries', 'activityReport');
                         this.view = 'arrears';
-                        this.fetchDashboard();
+                        this.fetchDashboard(true);
                         this.fetchArrears(true);
                         if (this.view === 'reports') this.fetchOperationalReports(true);
                         if (this.view === 'journals') this.fetchJournals(true);
@@ -805,7 +861,7 @@
                             this.notify(res.message);
                             this.newExpense = { date: new Date().toISOString().slice(0, 10), category: 'Dapur', amount: '', supplier: '', method: 'Tunai', description: '', proofBase64: '', project_id: '' };
                             this.invalidateData('expenseList', 'expenseCategories', 'cashTransactions', 'developmentProjects', 'operationalReport', 'reportData', 'journalEntries', 'activityReport');
-                            this.fetchDashboard();
+                            this.fetchDashboard(true);
                             if (this.view === 'expenses') this.fetchExpenses(true);
                             if (this.view === 'cash') this.fetchCash(true);
                             if (this.view === 'development') this.fetchDevelopmentProjects(true);
@@ -867,7 +923,7 @@
                             this.notify(res.message);
                             this.newDonation = { date: new Date().toISOString().slice(0, 10), donor_name: '', phone: '', type: 'Donasi', status: 'Masuk', amount: '', method: 'Transfer', description: '', proofBase64: '', project_id: '' };
                             this.invalidateData('donationList', 'cashTransactions', 'developmentProjects', 'operationalReport', 'reportData', 'journalEntries', 'activityReport');
-                            this.fetchDashboard();
+                            this.fetchDashboard(true);
                             if (this.view === 'donations') this.fetchDonations(true);
                             if (this.view === 'cash') this.fetchCash(true);
                             if (this.view === 'development') this.fetchDevelopmentProjects(true);
