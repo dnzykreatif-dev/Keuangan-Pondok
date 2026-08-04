@@ -4,12 +4,12 @@ function toDirectImageUrl(url) {
 
   const driveFileMatch = text.match(/\/d\/([a-zA-Z0-9_-]+)/);
   if (driveFileMatch && driveFileMatch[1]) {
-    return `https://drive.google.com/uc?export=view&id=${driveFileMatch[1]}`;
+    return `https://drive.google.com/thumbnail?id=${driveFileMatch[1]}&sz=w1200`;
   }
 
   const driveQueryMatch = text.match(/[?&]id=([a-zA-Z0-9_-]+)/);
   if (driveQueryMatch && driveQueryMatch[1]) {
-    return `https://drive.google.com/uc?export=view&id=${driveQueryMatch[1]}`;
+    return `https://drive.google.com/thumbnail?id=${driveQueryMatch[1]}&sz=w1200`;
   }
 
   return text;

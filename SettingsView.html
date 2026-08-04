@@ -5,20 +5,27 @@
             <div class="space-y-4">
                 <div>
                     <label class="block text-sm font-medium text-slate-500 mb-2">Nama Pesantren</label>
-                    <div class="flex gap-2">
-                        <input type="text" x-model="settings.school_name" class="flex-1 px-4 py-2.5 outline-none focus:border-primary">
-                        <button @click="saveSetting('school_name', settings.school_name)" class="bg-primary text-white px-4 py-2 rounded-xl text-sm font-semibold">Simpan</button>
-                    </div>
+                    <input type="text" x-model="settings.school_name" class="w-full px-4 py-2.5 rounded-xl outline-none focus:border-primary">
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-slate-500 mb-2">Logo Sekolah</label>
-                    <div class="flex items-center gap-6 p-4 bg-[#f5f8fc] border border-dashed border-[#dbe5ef] rounded-2xl">
-                        <div class="w-20 h-20 bg-white rounded-xl flex items-center justify-center overflow-hidden border border-[#dbe5ef]">
-                            <template x-if="settings.logo_url"><img :src="settings.logo_url" class="w-full h-full object-contain"></template>
-                            <template x-if="!settings.logo_url"><i data-lucide="image" class="w-8 h-8 text-slate-400"></i></template>
-                        </div>
-                        <div class="flex-1">
-                            <input type="file" @change="handleLogoUpload($event)" class="block w-full text-sm text-zinc-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-bold file:bg-primary/10 file:text-primary hover:file:bg-primary/20 cursor-pointer">
+                    <div class="space-y-3 p-4 bg-[#f5f8fc] border border-dashed border-[#dbe5ef] rounded-2xl">
+                        <div class="flex items-center gap-4">
+                            <div class="w-20 h-20 bg-white rounded-xl flex items-center justify-center overflow-hidden border border-[#dbe5ef]">
+                                <template x-if="pendingLogoPreview">
+                                    <img :src="pendingLogoPreview" class="w-full h-full object-contain">
+                                </template>
+                                <template x-if="!pendingLogoPreview && settings.logo_url">
+                                    <img :src="settings.logo_url" class="w-full h-full object-contain">
+                                </template>
+                                <template x-if="!pendingLogoPreview && !settings.logo_url">
+                                    <i data-lucide="image" class="w-8 h-8 text-slate-400"></i>
+                                </template>
+                            </div>
+                            <div class="flex-1 min-w-0">
+                                <input type="file" accept="image/*" @change="handleLogoSelection($event)" class="block w-full text-sm text-zinc-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-bold file:bg-primary/10 file:text-primary hover:file:bg-primary/20 cursor-pointer">
+                                <p class="text-xs text-slate-400 mt-2">Pilih file logo lalu tekan simpan. Format terbaik PNG atau JPG.</p>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -26,23 +33,34 @@
                     <label class="block text-sm font-medium text-slate-500 mb-2">QRIS Payload</label>
                     <div class="space-y-2">
                         <textarea x-model="settings.qris_id" rows="3" class="w-full px-4 py-3 outline-none focus:border-primary font-mono text-sm" placeholder="Tempel payload QRIS di sini"></textarea>
-                        <div class="flex justify-end">
-                            <button @click="saveSetting('qris_id', settings.qris_id)" class="bg-primary text-white px-4 py-2 rounded-xl text-sm font-semibold">Simpan QRIS</button>
-                        </div>
                     </div>
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-slate-500 mb-2">Metode Pembayaran</label>
                     <div class="space-y-2">
                         <textarea x-model="settings.payment_methods" rows="3" class="w-full px-4 py-3 outline-none focus:border-primary text-sm" placeholder="Tunai, Transfer Bank, QRIS, DANA, ShopeePay, GoPay"></textarea>
-                        <p class="text-xs text-slate-400">Pisahkan dengan koma. Metode ini akan muncul di form pembayaran dan bisa dipakai untuk pencatatan manual.</p>
-                        <div class="flex justify-end">
-                            <button @click="saveSetting('payment_methods', settings.payment_methods)" class="bg-primary text-white px-4 py-2 rounded-xl text-sm font-semibold">Simpan Metode</button>
-                        </div>
+                        <p class="text-xs text-slate-400">Pisahkan dengan koma. Metode ini akan muncul di form pembayaran dan bisa dipakai untuk pencatatan manual. Untuk detail nomor e-wallet, isi di bagian bawah.</p>
                     </div>
                 </div>
-                <div class="p-4 bg-[#f5f8fc] border border-[#dbe5ef] rounded-2xl">
-                    <p class="text-sm text-zinc-400">Level 1 menampilkan operasional pondok. Jurnal dan laporan akuntansi tetap tersedia di `Mode Akuntansi` untuk Admin.</p>
+                <div>
+                    <label class="block text-sm font-medium text-slate-500 mb-2">Detail E-Wallet / Rekening</label>
+                    <div class="space-y-2">
+                        <textarea x-model="settings.ewallet_info" rows="4" class="w-full px-4 py-3 outline-none focus:border-primary text-sm" placeholder="Contoh:
+DANA - 08xxxxxxxxxx
+ShopeePay - 08xxxxxxxxxx
+GoPay - 08xxxxxxxxxx"></textarea>
+                        <p class="text-xs text-slate-400">Isi nama layanan, nomor/ID tujuan, dan bila perlu nama pemilik. Teks ini bisa dipakai sebagai petunjuk manual pembayaran.</p>
+                    </div>
+                </div>
+                <div class="p-4 bg-[#eef5ff] border border-[#cfe0f4] rounded-2xl space-y-3">
+                    <p class="text-sm text-slate-700 leading-relaxed">Level 1 menampilkan operasional pondok. Jurnal dan laporan akuntansi tetap tersedia di `Mode Akuntansi` untuk Admin.</p>
+                    <button
+                        @click="saveAllSettings()"
+                        :disabled="loading"
+                        class="w-full px-5 py-3.5 rounded-2xl text-base font-extrabold shadow-lg transition-all disabled:opacity-70 disabled:cursor-not-allowed"
+                        style="background: linear-gradient(180deg, #2f8ae7 0%, #1f7ad9 100%); color: #ffffff; border: 1px solid #1f7ad9; text-shadow: 0 1px 0 rgba(0, 0, 0, 0.18);">
+                        <span x-text="loading ? 'Menyimpan...' : 'Simpan Semua Pengaturan'"></span>
+                    </button>
                 </div>
             </div>
         </div>

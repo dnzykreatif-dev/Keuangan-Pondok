@@ -5,25 +5,39 @@
             <h2 class="text-2xl font-semibold" x-text="getDashboardPeriodLabel()"></h2>
             <p class="text-sm text-zinc-500">Default menampilkan keseluruhan data. Gunakan tombol di kanan untuk berpindah ke bulan tertentu.</p>
         </div>
-        <div class="flex flex-col gap-3 xl:items-end">
-            <div class="flex flex-wrap gap-2">
-                <button @click="setDashboardFilter('ALL')" :class="dashboardFilter.mode === 'ALL' ? 'bg-primary text-white border-primary shadow-sm' : 'bg-white text-slate-700 border-[#dbe5ef] hover:border-primary/60'" class="px-4 py-2 rounded-xl border font-semibold transition-all">Semua Data</button>
-                <button @click="setCurrentDashboardMonth()" :class="dashboardFilter.mode === 'MONTH' && dashboardFilter.month === getMonthOptions()[new Date().getMonth()] && Number(dashboardFilter.year) === new Date().getFullYear() ? 'bg-primary text-white border-primary shadow-sm' : 'bg-white text-slate-700 border-[#dbe5ef] hover:border-primary/60'" class="px-4 py-2 rounded-xl border font-semibold transition-all">Bulan Ini</button>
+        <div class="flex flex-col gap-3 xl:items-end w-full xl:w-auto">
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full xl:w-auto">
+                <button
+                    @click="setDashboardFilter('ALL')"
+                    class="w-full px-4 py-3 rounded-xl border font-extrabold text-base sm:text-sm transition-all text-center whitespace-nowrap min-h-[48px]"
+                    :style="dashboardFilter.mode === 'ALL'
+                        ? 'background:#1f7ad9;color:#ffffff;border-color:#1f7ad9;box-shadow:0 8px 18px rgba(31,122,217,0.22)'
+                        : 'background:#f7fbff;color:#172033;border-color:#cbd8e6;box-shadow:none'">
+                    Semua Data
+                </button>
+                <button
+                    @click="setCurrentDashboardMonth()"
+                    class="w-full px-4 py-3 rounded-xl border font-extrabold text-base sm:text-sm transition-all text-center whitespace-nowrap min-h-[48px]"
+                    :style="dashboardFilter.mode === 'MONTH' && dashboardFilter.month === getMonthOptions()[new Date().getMonth()] && Number(dashboardFilter.year) === new Date().getFullYear()
+                        ? 'background:#1f7ad9;color:#ffffff;border-color:#1f7ad9;box-shadow:0 8px 18px rgba(31,122,217,0.22)'
+                        : 'background:#f7fbff;color:#172033;border-color:#cbd8e6;box-shadow:none'">
+                    Bulan Ini
+                </button>
             </div>
-            <div class="flex flex-wrap items-end gap-3">
-                <div class="flex flex-col">
+            <div class="grid grid-cols-1 sm:grid-cols-[1fr_auto_auto] gap-3 items-end w-full">
+                <div class="flex flex-col w-full">
                     <label class="text-xs uppercase tracking-widest text-zinc-500 font-bold mb-1">Bulan</label>
-                    <select x-model="dashboardFilter.month" class="px-4 py-2.5 rounded-xl border border-[#dbe5ef] bg-white outline-none focus:ring-1 focus:ring-primary min-w-[170px]">
+                    <select x-model="dashboardFilter.month" class="w-full px-4 py-2.5 rounded-xl border border-[#dbe5ef] bg-white outline-none focus:ring-1 focus:ring-primary min-w-0">
                         <template x-for="month in getMonthOptions()" :key="month">
                             <option :value="month" x-text="month"></option>
                         </template>
                     </select>
                 </div>
-                <div class="flex flex-col">
+                <div class="flex flex-col w-full sm:w-auto">
                     <label class="text-xs uppercase tracking-widest text-zinc-500 font-bold mb-1">Tahun</label>
-                    <input type="number" x-model.number="dashboardFilter.year" class="px-4 py-2.5 rounded-xl border border-[#dbe5ef] bg-white outline-none focus:ring-1 focus:ring-primary w-28">
+                    <input type="number" x-model.number="dashboardFilter.year" class="w-full sm:w-28 px-4 py-2.5 rounded-xl border border-[#dbe5ef] bg-white outline-none focus:ring-1 focus:ring-primary">
                 </div>
-                <button @click="applyDashboardMonthFilter()" class="px-4 py-2.5 rounded-xl bg-primary text-white font-semibold shadow-sm hover:brightness-95 transition-all">Terapkan Bulan</button>
+                <button @click="applyDashboardMonthFilter()" class="w-full sm:w-auto px-4 py-2.5 rounded-xl bg-primary text-white font-semibold shadow-sm hover:brightness-95 transition-all whitespace-nowrap">Terapkan Bulan</button>
             </div>
         </div>
     </div>

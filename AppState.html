@@ -16,7 +16,7 @@
             stats: { cashBalance: 0, incomeThisMonth: 0, expenseThisMonth: 0, totalArrears: 0, donationThisMonth: 0, activeSantriCount: 0 },
             dashboardData: { incomeVsExpense: [], topExpenses: [], unpaidBills: [] },
             dashboardFilter: { mode: 'ALL', month: ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'][new Date().getMonth()], year: new Date().getFullYear() },
-            settings: { school_name: '', logo_url: '', payment_methods: '', ...INITIAL_APP_SETTINGS },
+            settings: { school_name: '', logo_url: '', payment_methods: '', ewallet_info: '', ...INITIAL_APP_SETTINGS },
             dataLoaded: {
                 dashboardKey: '',
                 santri: false,
@@ -76,6 +76,8 @@
             genBill: { month: 'Januari', year: new Date().getFullYear(), nominal: 500000, targetMode: 'ALL', classFilter: '', studentFilter: '' },
             paymentData: { id_santri: '', id_billing: '', amount: 0, method: 'Tunai', proofBase64: '', penerima: '' },
             qrisData: { student_name: '', billing_label: '', amount: 0, qr_text: '', note: '' },
+            pendingLogoFile: null,
+            pendingLogoPreview: '',
             newExpense: { date: new Date().toISOString().slice(0, 10), category: 'Dapur', amount: '', supplier: '', method: 'Tunai', description: '', proofBase64: '', project_id: '' },
             newDonation: { date: new Date().toISOString().slice(0, 10), donor_name: '', phone: '', type: 'Donasi', status: 'Masuk', amount: '', method: 'Transfer', description: '', proofBase64: '', project_id: '' },
             newProject: { name: '', target_budget: '', description: '', status: 'Aktif', start_date: new Date().toISOString().slice(0, 10), end_date: '' },
@@ -1082,23 +1084,86 @@
                     .updateAppSetting(key, value);
             },
 
-            handleLogoUpload(e) {
+            updateSettingAsync(key, value) {
+                return new Promise((resolve, reject) => {
+                    google.script.run
+                        .withSuccessHandler(resolve)
+                        .withFailureHandler(reject)
+                        .updateAppSetting(key, value);
+                });
+            },
+
+            saveLogoAsync(base64) {
+                return new Promise((resolve, reject) => {
+                    google.script.run
+                        .withSuccessHandler(resolve)
+                        .withFailureHandler(reject)
+                        .saveSchoolLogo(base64);
+                });
+            },
+
+            handleLogoSelection(e) {
                 const file = e.target.files[0];
                 if (!file) return;
+                this.pendingLogoFile = file;
+                const reader = new FileReader();
+                reader.onload = (f) => {
+                    this.pendingLogoPreview = f.target.result;
+                    this.refreshIcons();
+                };
+                reader.readAsDataURL(file);
+            },
+
+            saveLogoUpload() {
+                if (!this.pendingLogoFile) return this.notify("Pilih file logo dulu", "error");
                 this.loading = true;
                 const reader = new FileReader();
                 reader.onload = (f) => {
                     google.script.run
                         .withSuccessHandler(res => {
                             this.loading = false;
+                            if (!res.ok) return this.notify(res.message, 'error');
                             this.settings.logo_url = res.url;
+                            this.pendingLogoFile = null;
+                            this.pendingLogoPreview = '';
                             this.notify("Logo berhasil diperbarui");
                             this.refreshIcons();
                         })
                         .withFailureHandler(err => this.handleFailure(err))
                         .saveSchoolLogo(f.target.result);
                 };
-                reader.readAsDataURL(file);
+                reader.readAsDataURL(this.pendingLogoFile);
+            },
+
+            async saveAllSettings() {
+                this.loading = true;
+                try {
+                    await this.updateSettingAsync('school_name', this.settings.school_name || '');
+                    await this.updateSettingAsync('qris_id', this.settings.qris_id || '');
+                    await this.updateSettingAsync('payment_methods', this.settings.payment_methods || '');
+                    await this.updateSettingAsync('ewallet_info', this.settings.ewallet_info || '');
+
+                    if (this.pendingLogoFile) {
+                        const logoBase64 = await new Promise((resolve, reject) => {
+                            const reader = new FileReader();
+                            reader.onload = (event) => resolve(event.target.result);
+                            reader.onerror = () => reject(new Error('Logo tidak dapat dibaca'));
+                            reader.readAsDataURL(this.pendingLogoFile);
+                        });
+                        const logoResult = await this.saveLogoAsync(logoBase64);
+                        if (!logoResult.ok) throw new Error(logoResult.message || 'Logo gagal disimpan');
+                        this.settings.logo_url = logoResult.url;
+                        this.pendingLogoFile = null;
+                        this.pendingLogoPreview = '';
+                    }
+
+                    this.notify("Pengaturan berhasil disimpan");
+                    this.refreshIcons();
+                } catch (error) {
+                    this.handleFailure(error);
+                } finally {
+                    this.loading = false;
+                }
             },
 
             openView(viewName) {
