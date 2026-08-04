@@ -502,6 +502,16 @@
                 if (this.selectedSantri) this.openStudentProfile(this.selectedSantri);
             },
 
+            refreshDashboardSilently() {
+                window.setTimeout(() => this.fetchDashboard(), 0);
+            },
+
+            removeLocalItem(listName, keyName, keyValue) {
+                const list = this[listName];
+                if (!Array.isArray(list)) return;
+                this[listName] = list.filter(item => String(item?.[keyName]) !== String(keyValue));
+            },
+
             promptText(label, currentValue = '') {
                 const value = prompt(label, currentValue || '');
                 return value === null ? null : value.trim();
@@ -552,7 +562,10 @@
                             this.selectedSantri = null;
                             this.selectedStudentProfile = null;
                         }
-                        this.refreshAfterDataChange('santri', 'arrears');
+                        this.removeLocalItem('santriList', 'id_santri', santri.id_santri);
+                        this.removeLocalItem('arrearsList', 'id_santri', santri.id_santri);
+                        this.refreshDashboardSilently();
+                        this.invalidateData('santri', 'arrears');
                     })
                     .withFailureHandler(err => this.handleFailure(err))
                     .deleteSantri(santri.id_santri);
@@ -670,7 +683,15 @@
                         this.loading = false;
                         if (!res.ok) return this.notify(res.message, 'error');
                         this.notify(res.message);
-                        this.refreshAfterDataChange('arrears');
+                        this.removeLocalItem('arrearsList', 'id_billing', billing.id_billing);
+                        if (this.selectedStudentProfile?.bills) {
+                            this.selectedStudentProfile.bills = this.selectedStudentProfile.bills.filter(item => String(item.id_billing) !== String(billing.id_billing));
+                            this.selectedStudentProfile.totalArrears = this.selectedStudentProfile.bills
+                                .filter(item => item.payment_status !== 'Lunas')
+                                .reduce((sum, item) => sum + Number(item.remaining_amount || item.nominal || 0), 0);
+                        }
+                        this.refreshDashboardSilently();
+                        this.invalidateData('arrears', 'operationalReport', 'reportData', 'journalEntries', 'activityReport');
                     })
                     .withFailureHandler(err => this.handleFailure(err))
                     .deleteBilling(billing.id_billing);
@@ -829,7 +850,9 @@
                         this.loading = false;
                         if (!res.ok) return this.notify(res.message, 'error');
                         this.notify(res.message);
-                        this.refreshAfterDataChange('expenseList', 'developmentProjects');
+                        this.removeLocalItem('expenseList', 'expense_id', expense.expense_id);
+                        this.refreshDashboardSilently();
+                        this.invalidateData('expenseList', 'developmentProjects', 'operationalReport', 'reportData', 'journalEntries', 'activityReport');
                     })
                     .withFailureHandler(err => this.handleFailure(err))
                     .deleteExpense(expense.expense_id);
@@ -891,7 +914,9 @@
                         this.loading = false;
                         if (!res.ok) return this.notify(res.message, 'error');
                         this.notify(res.message);
-                        this.refreshAfterDataChange('donationList', 'developmentProjects');
+                        this.removeLocalItem('donationList', 'donation_id', donation.donation_id);
+                        this.refreshDashboardSilently();
+                        this.invalidateData('donationList', 'developmentProjects', 'operationalReport', 'reportData', 'journalEntries', 'activityReport');
                     })
                     .withFailureHandler(err => this.handleFailure(err))
                     .deleteDonation(donation.donation_id);
@@ -945,7 +970,9 @@
                         this.loading = false;
                         if (!res.ok) return this.notify(res.message, 'error');
                         this.notify(res.message);
-                        this.refreshAfterDataChange('developmentProjects');
+                        this.removeLocalItem('developmentProjects', 'project_id', project.project_id);
+                        this.refreshDashboardSilently();
+                        this.invalidateData('developmentProjects', 'expenseList', 'donationList', 'operationalReport', 'reportData', 'journalEntries', 'activityReport');
                     })
                     .withFailureHandler(err => this.handleFailure(err))
                     .deleteDevelopmentProject(project.project_id);
@@ -977,7 +1004,12 @@
                         this.loading = false;
                         if (!res.ok) return this.notify(res.message, 'error');
                         this.notify(res.message);
-                        this.refreshAfterDataChange('arrears', 'paymentOrders');
+                        this.removeLocalItem('paymentOrders', 'order_id', transaction.id_transaksi);
+                        if (this.selectedStudentProfile?.transactions) {
+                            this.selectedStudentProfile.transactions = this.selectedStudentProfile.transactions.filter(item => String(item.id_transaksi) !== String(transaction.id_transaksi));
+                        }
+                        this.refreshDashboardSilently();
+                        this.invalidateData('arrears', 'paymentOrders', 'cashTransactions', 'operationalReport', 'reportData', 'journalEntries', 'activityReport');
                     })
                     .withFailureHandler(err => this.handleFailure(err))
                     .deletePayment(transaction.id_transaksi);
