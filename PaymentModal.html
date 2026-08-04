@@ -1,7 +1,7 @@
 <!-- Payment Modal -->
-<div x-show="showPaymentModal" x-cloak class="fixed inset-0 bg-black/80 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
-    <div class="panel p-8 rounded-2xl w-full max-w-md" @click.away="showPaymentModal = false">
-        <h2 class="text-xl font-semibold mb-4">Catat Pembayaran</h2>
+<div x-show="showPaymentModal" x-cloak class="fixed inset-0 bg-black/80 backdrop-blur-sm z-[60] flex items-start sm:items-center justify-center p-3 sm:p-4 overflow-y-auto">
+    <div class="panel p-5 sm:p-8 rounded-2xl w-full max-w-md my-auto max-h-[92vh] overflow-y-auto" @click.away="showPaymentModal = false">
+        <h2 class="text-xl font-semibold mb-3 sm:mb-4">Catat Pembayaran</h2>
         <p class="text-slate-500 mb-6">Santri: <span class="text-slate-900 font-semibold" x-text="selectedSantri?.nama"></span></p>
         <div class="space-y-4">
             <div>
@@ -33,7 +33,7 @@
             <div>
                 <p class="text-xs text-slate-500 mb-2 italic" x-text="paymentData.method === 'QRIS' ? 'Sistem akan membuat QRIS dinamis lokal dari payload QRIS di pengaturan.' : 'Metode lain akan dicatat manual sebagai pembayaran yang diterima.'"></p>
             </div>
-            <div class="flex gap-4 mt-8">
+            <div class="flex flex-col sm:flex-row gap-3 sm:gap-4 mt-8">
                 <button @click="showPaymentModal = false" class="flex-1 btn-soft py-3 rounded-lg">Batal</button>
                 <button @click="handleProcessPayment" class="flex-1 bg-primary text-white py-3 rounded-lg font-semibold" x-text="paymentData.method === 'QRIS' ? 'Buat QRIS' : 'Catat Bayar'"></button>
             </div>

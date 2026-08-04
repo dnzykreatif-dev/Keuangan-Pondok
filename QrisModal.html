@@ -1,6 +1,6 @@
-<div x-show="showQrisModal" x-cloak class="fixed inset-0 bg-black/70 backdrop-blur-sm z-[70] flex items-center justify-center p-4" @click.self="closeQrisModal()">
-    <div class="panel w-full max-w-md rounded-3xl p-6">
-        <div class="flex items-center justify-between mb-5">
+<div x-show="showQrisModal" x-cloak class="fixed inset-0 bg-black/70 backdrop-blur-sm z-[70] flex items-start sm:items-center justify-center p-3 sm:p-4 overflow-y-auto" @click.self="closeQrisModal()">
+    <div class="panel w-full max-w-md rounded-3xl p-5 sm:p-6 my-auto max-h-[92vh] overflow-y-auto">
+        <div class="flex items-start justify-between gap-3 mb-5">
             <div>
                 <h3 class="text-2xl font-semibold">QRIS Dinamis</h3>
                 <p class="text-sm text-zinc-500">Tagihan otomatis dari data santri</p>
@@ -17,7 +17,7 @@
                 <p class="text-sm text-zinc-500 mt-1" x-text="qrisData.billing_label ? ('Tagihan ' + qrisData.billing_label) : '-'"></p>
             </div>
 
-            <div class="panel rounded-2xl p-4 flex items-center justify-center min-h-[280px]">
+            <div class="panel rounded-2xl p-4 flex items-center justify-center min-h-[220px] sm:min-h-[280px]">
                 <div id="qris-code" class="w-full flex items-center justify-center"></div>
             </div>
 
