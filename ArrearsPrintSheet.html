@@ -1,0 +1,33 @@
+<section id="arrears-print-sheet" x-show="view === 'arrears'" x-cloak class="hidden bg-white min-h-screen p-8">
+    <div class="flex items-start justify-between gap-6 border-b-2 border-slate-800 pb-5">
+        <div>
+            <p class="text-xs uppercase tracking-[0.22em] text-slate-500">Laporan keuangan santri</p>
+            <h1 class="text-2xl font-bold mt-2" x-text="settings.school_name || 'Keuangan Pondok'"></h1>
+            <p class="text-sm text-slate-600 mt-1" x-text="arrearsPrintStudent ? 'Rekap Tunggakan Individual' : 'Rekap Tunggakan per Santri'"></p>
+        </div>
+        <div class="text-right text-sm text-slate-600">
+            <p x-text="'Dicetak: ' + new Intl.DateTimeFormat('id-ID', { dateStyle: 'long' }).format(new Date())"></p>
+            <p class="mt-1" x-text="arrearsPrintStudent ? 'Santri: ' + arrearsPrintStudent.nama : (selectedClassFilter ? 'Kelas: ' + selectedClassFilter : 'Semua kelas')"></p>
+        </div>
+    </div>
+    <div class="grid grid-cols-3 gap-4 my-6">
+        <div class="print-sheet-card rounded-xl border border-slate-200 p-4"><p class="text-xs text-slate-500" x-text="arrearsPrintStudent ? 'Nama santri' : 'Santri menunggak'"></p><p class="text-xl font-bold mt-1" x-text="arrearsPrintStudent ? arrearsPrintStudent.nama : getArrearsStudentRecap().length"></p></div>
+        <div class="print-sheet-card rounded-xl border border-slate-200 p-4"><p class="text-xs text-slate-500">Jumlah tagihan</p><p class="text-xl font-bold mt-1" x-text="arrearsPrintStudent ? arrearsPrintStudent.bills.length : getFilteredArrears().length"></p></div>
+        <div class="print-sheet-card rounded-xl border border-slate-200 p-4"><p class="text-xs text-slate-500">Total tunggakan</p><p class="text-xl font-bold mt-1" x-text="formatCurrency(arrearsPrintStudent ? arrearsPrintStudent.total : getFilteredArrearsTotal())"></p></div>
+    </div>
+    <table class="print-sheet-table text-sm">
+        <thead><tr><th>No.</th><th>Nama Santri</th><th>Kelas</th><th>Periode Tunggakan</th><th>Total</th></tr></thead>
+        <tbody>
+            <template x-for="(student, index) in getArrearsPrintRecap()" :key="student.id_santri || student.nama">
+                <tr>
+                    <td x-text="index + 1"></td>
+                    <td><strong x-text="student.nama"></strong><br><span class="text-xs text-slate-500" x-text="student.kontak ? 'Kontak wali: ' + student.kontak : ''"></span></td>
+                    <td x-text="student.kelas || '-'"></td>
+                    <td><span x-text="student.bills.map(bill => bill.bulan + ' ' + bill.tahun).join(', ')"></span></td>
+                    <td><strong x-text="formatCurrency(student.total)"></strong></td>
+                </tr>
+            </template>
+        </tbody>
+    </table>
+    <p class="text-xs text-slate-500 mt-8">Dokumen ini dibuat dari data tagihan yang masih memiliki sisa pembayaran.</p>
+</section>

@@ -1,4 +1,4 @@
-function generateMonthlyBills(month, year, nominal, classFilter, studentFilter) {
+function generateMonthlyBills(month, year, nominal, classFilter, studentFilter, createdBy) {
   const selectedMonth = normalizeText(month);
   const selectedYear = normalizeText(year);
   const billAmount = normalizeNumber(nominal, 0);
@@ -84,6 +84,7 @@ function generateMonthlyBills(month, year, nominal, classFilter, studentFilter) 
 
     appendRows(billingSheet, rowsToAppend);
     postBillingJournals(billsToPost);
+    const notificationPreview = buildBillingWhatsAppPreview(billsToPost, createdBy);
 
     const targetLabel = selectedStudent
       ? `untuk ${targetStudents[0].nama}`
@@ -103,7 +104,8 @@ function generateMonthlyBills(month, year, nominal, classFilter, studentFilter) 
       ok: true,
       created: rowsToAppend.length,
       skipped: skippedCount,
-      message: `Berhasil membuat ${rowsToAppend.length} tagihan ${targetLabel}. ${skippedCount ? skippedCount + ' dilewati karena sudah ada.' : ''}`.trim()
+      message: `Berhasil membuat ${rowsToAppend.length} tagihan ${targetLabel}. ${skippedCount ? skippedCount + ' dilewati karena sudah ada.' : ''}`.trim(),
+      notification_preview: notificationPreview.ok ? notificationPreview.data : null
     };
   } catch (error) {
     return { ok: false, message: error.toString() };
@@ -113,23 +115,89 @@ function generateMonthlyBills(month, year, nominal, classFilter, studentFilter) 
 }
 
 function getArrearsRecap() {
-  const santri = getSheetData('santri');
-  const billings = getSheetData('billings')
-    .filter(billing => billing.status === 'Belum Lunas')
-    .map(enrichBillWithPaymentStatus)
-    .filter(billing => billing.remaining_amount > 0);
+  return {
+    ok: true,
+    data: buildArrearsRecap(
+      getSheetData('santri'),
+      getSheetData('billings'),
+      getSheetData('transactions')
+    )
+  };
+}
 
-  const recap = billings.map(billing => {
-    const student = santri.find(item => item.id_santri === billing.id_santri);
+function getArrearsWhatsAppPreview(idSantri) {
+  try {
+    const arrears = buildArrearsRecap(
+      getSheetData('santri'),
+      getSheetData('billings'),
+      getSheetData('transactions')
+    ).filter(item => item.id_santri === normalizeText(idSantri));
+    if (!arrears.length) throw new Error('Tidak ada tunggakan aktif untuk santri ini');
+
+    const first = arrears[0];
+    const total = arrears.reduce((sum, item) => sum + normalizeNumber(item.remaining_amount || item.nominal), 0);
+    const settings = getWhatsAppSettings();
+    const sender = settings.ok ? settings.data.wa_sender_name : DEFAULT_APP_SETTINGS.wa_sender_name;
+    const periods = arrears.map(item => `- ${item.bulan} ${item.tahun}: ${formatCurrencyIDR(item.remaining_amount || item.nominal)}`).join('\n');
+    const message = [
+      `Assalamu'alaikum Wali Santri ${first.nama},`,
+      '',
+      `Berikut rekap tunggakan SPP an. ${first.nama} (${first.kelas || '-'}) :`,
+      periods,
+      '',
+      `Total tunggakan: ${formatCurrencyIDR(total)}`,
+      '',
+      'Mohon dapat diselesaikan melalui kanal pembayaran yang tersedia. Jika sudah melakukan pembayaran, silakan abaikan pesan ini atau kirimkan konfirmasi kepada admin.',
+      '',
+      `Terima kasih.\n${sender}`
+    ].join('\n');
+    const target = getStudentWhatsAppTarget({ kontak_ortu: first.kontak });
+
     return {
-      ...billing,
-      nama: student ? student.nama : 'Unknown',
-      kelas: student ? student.kelas : '-',
-      kontak: student ? student.kontak_ortu : ''
+      ok: true,
+      data: {
+        student_name: first.nama,
+        class_name: first.kelas || '-',
+        total,
+        bill_count: arrears.length,
+        items: arrears.map(item => ({
+          billing_label: `${item.bulan} ${item.tahun}`,
+          amount: normalizeNumber(item.remaining_amount || item.nominal),
+          paid_amount: normalizeNumber(item.paid_amount)
+        })),
+        phone: target.phone,
+        raw_phone: target.raw_phone,
+        is_valid_phone: target.is_valid,
+        message,
+        link: target.is_valid ? buildWhatsAppLink(target.phone, message) : '',
+        note: target.is_valid ? 'Siap dibuka di WhatsApp' : target.raw_phone ? 'Nomor orang tua perlu diperbaiki' : 'Kontak orang tua belum diisi'
+      }
     };
-  });
+  } catch (error) {
+    return { ok: false, message: error.toString() };
+  }
+}
 
-  return { ok: true, data: recap };
+function buildArrearsRecap(santri, billings, transactions) {
+  const paidAmountByBillingId = buildPaidAmountByBillingId(transactions);
+  const studentById = (santri || []).reduce((map, student) => {
+    map[student.id_santri] = student;
+    return map;
+  }, {});
+
+  return (billings || [])
+    .filter(billing => billing.status === 'Belum Lunas')
+    .map(billing => enrichBillWithPaymentStatus(billing, paidAmountByBillingId))
+    .filter(billing => billing.remaining_amount > 0)
+    .map(billing => {
+      const student = studentById[billing.id_santri];
+      return {
+        ...billing,
+        nama: student ? student.nama : 'Unknown',
+        kelas: student ? student.kelas : '-',
+        kontak: student ? student.kontak_ortu : ''
+      };
+    });
 }
 
 function updateBilling(idBilling, billingData) {

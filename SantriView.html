@@ -1,4 +1,4 @@
-<div x-show="view === 'santri'" class="animate-in space-y-6">
+<div x-show="view === 'santri'" class="animate-in page-accent accent-teal space-y-6">
     <div class="flex flex-col sm:flex-row justify-between gap-4">
         <input type="text" x-model="santriSearch" placeholder="Cari santri..." class="w-full sm:w-64 px-4 py-2 outline-none focus:ring-1 focus:ring-primary">
         <button @click="showAddSantriModal = true" class="btn-action btn-action-primary whitespace-nowrap">
@@ -38,6 +38,10 @@
                                             <i data-lucide="wallet" class="w-4 h-4"></i>
                                             <span>Bayar</span>
                                         </button>
+                                        <button @click="openLatestInvoice(s)" class="btn-action btn-action-ghost btn-action-sm">
+                                            <i data-lucide="receipt-text" class="w-4 h-4"></i>
+                                            <span>Invoice</span>
+                                        </button>
                                         <button @click="openQrisModal(s)" class="btn-action btn-action-ghost btn-action-sm">
                                             <i data-lucide="qr-code" class="w-4 h-4"></i>
                                             <span>Kirim QRIS</span>
@@ -52,9 +56,9 @@
             </div>
         </div>
         <div class="glass rounded-2xl p-6">
-            <h3 class="font-semibold mb-4">Riwayat Pembayaran</h3>
+            <h3 class="font-semibold mb-4">Catatan SPP Santri</h3>
             <template x-if="!selectedStudentProfile">
-                <p class="text-sm text-zinc-500">Klik `Detail` pada santri untuk melihat riwayat pembayaran dan tunggakan.</p>
+                <p class="text-sm text-zinc-500">Klik Detail pada santri untuk melihat riwayat pembayaran dan bulan tunggakan.</p>
             </template>
             <template x-if="selectedStudentProfile">
                 <div class="space-y-4">
@@ -66,11 +70,38 @@
                         <p class="text-xs uppercase tracking-widest text-zinc-500">Total Tunggakan</p>
                         <p class="text-xl font-bold text-danger mt-1" x-text="formatCurrency(selectedStudentProfile.totalArrears)"></p>
                     </div>
+                    <div class="pt-2">
+                        <div class="flex items-center justify-between mb-3">
+                            <h4 class="font-semibold">Bulan Tunggakan</h4>
+                            <span class="text-xs text-zinc-500" x-text="(selectedStudentProfile.unpaidBills || []).length + ' bulan'"></span>
+                        </div>
+                        <div class="space-y-2 max-h-52 overflow-y-auto pr-1">
+                            <template x-for="bill in selectedStudentProfile.unpaidBills || []" :key="bill.id_billing">
+                                <div class="border border-danger/20 bg-danger/5 rounded-xl p-3">
+                                    <div class="flex items-start justify-between gap-3">
+                                        <div>
+                                            <p class="text-sm font-semibold text-slate-900" x-text="bill.bulan + ' ' + bill.tahun"></p>
+                                            <p class="text-xs text-zinc-500" x-text="'Sudah bayar ' + formatCurrency(bill.paid_amount || 0)"></p>
+                                        </div>
+                                        <div class="text-right">
+                                            <p class="text-xs text-zinc-500">Sisa</p>
+                                            <p class="text-sm font-bold text-danger" x-text="formatCurrency(bill.remaining_amount || bill.nominal)"></p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </template>
+                            <p x-show="(selectedStudentProfile.unpaidBills || []).length === 0" class="text-sm text-success font-semibold">Tidak ada tunggakan SPP.</p>
+                        </div>
+                    </div>
                     <div class="space-y-2 max-h-80 overflow-y-auto pr-1">
+                        <h4 class="font-semibold mb-3">Status Semua Tagihan</h4>
                         <template x-for="bill in selectedStudentProfile.bills" :key="bill.id_billing">
-                            <div class="flex items-center justify-between border-b border-[#e6edf5] pb-2">
-                                <span x-text="bill.bulan + ' ' + bill.tahun"></span>
-                                <span class="text-sm font-semibold" :class="bill.status === 'Lunas' ? 'text-success' : 'text-danger'" x-text="bill.status === 'Lunas' ? 'Lunas' : 'Belum'"></span>
+                            <div class="border-b border-[#e6edf5] pb-2">
+                                <div class="flex items-center justify-between gap-3">
+                                    <span class="font-medium" x-text="bill.bulan + ' ' + bill.tahun"></span>
+                                    <span class="text-sm font-semibold" :class="bill.payment_status === 'Lunas' ? 'text-success' : 'text-danger'" x-text="bill.payment_status || bill.status"></span>
+                                </div>
+                                <p class="text-xs text-zinc-500 mt-1" x-text="'Tagihan ' + formatCurrency(bill.nominal) + ' / sisa ' + formatCurrency(bill.remaining_amount || 0)"></p>
                             </div>
                         </template>
                     </div>
@@ -82,9 +113,10 @@
                                     <div class="flex items-start justify-between gap-3">
                                         <div>
                                             <p class="text-sm font-semibold" x-text="formatCurrency(transaction.jumlah_bayar)"></p>
-                                            <p class="text-xs text-zinc-500" x-text="formatDate(transaction.tanggal) + ' / ' + transaction.metode + ' / ' + transaction.status"></p>
+                                            <p class="text-xs text-zinc-500" x-text="(transaction.billing_label || transaction.id_billing) + ' / ' + formatDate(transaction.tanggal) + ' / ' + transaction.metode + ' / ' + transaction.status"></p>
                                         </div>
                                         <div class="flex gap-2">
+                                            <button x-show="String(transaction.status).toUpperCase() === 'PAID'" @click="openInvoiceFromTransaction(transaction)" class="text-slate-700 text-xs font-semibold">Invoice</button>
                                             <button @click="editPaymentData(transaction)" class="text-primary text-xs font-semibold">Edit</button>
                                             <button @click="deletePaymentData(transaction)" class="text-danger text-xs font-semibold">Hapus</button>
                                         </div>

@@ -64,6 +64,24 @@ Tombol `Kirim Link` membuat order untuk tagihan tertua yang belum lunas, lalu me
 
 Jika masih mode mock, pesan akan berisi payload QRIS mock. Setelah provider nyata aktif, pesan akan berisi link pembayaran provider.
 
+## Rekap Tunggakan dan Bukti Pembayaran
+
+1. Buka **Tunggakan** dan pilih kelas jika perlu. Bagian **Rekap per santri**
+   menampilkan total sisa dan bulan belum lunas untuk masing-masing santri.
+2. Tekan **Cetak PDF** pada kartu santri yang dimaksud. Pada dialog browser,
+   pilih printer atau **Save as PDF**. Tombol cetak di atas halaman mencetak
+   seluruh rekap sesuai filter.
+3. Tekan **Bagikan WA** untuk melihat pesan tagihan satu santri. Periksa nama,
+   nominal, bulan, dan nomor wali sebelum membuka WhatsApp dan mengirimnya.
+4. Setelah pembayaran tercatat, buka **Invoice** dari hasil pembayaran atau
+   riwayat transaksi. Cetak/simpan PDF dari dialog cetak browser.
+5. Tombol WhatsApp, email, berbagi perangkat, atau salin pada invoice membagikan
+   **ringkasan teks**. Jika wali memerlukan berkas PDF, lampirkan PDF yang
+   disimpan pada langkah sebelumnya secara manual.
+
+Jangan kirim rekap beberapa santri kepada satu wali. QRIS mock bukan bukti
+pembayaran nyata; cek status transaksi sebelum menyatakan lunas.
+
 ## Jurnal
 
 Menu `Jurnal` menampilkan posting otomatis dari tagihan dan pembayaran. Setiap jurnal harus balance.

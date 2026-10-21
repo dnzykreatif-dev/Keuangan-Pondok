@@ -1,4 +1,4 @@
-<div x-show="view === 'reports'" class="animate-in space-y-6">
+<div x-show="view === 'reports'" class="animate-in page-accent accent-indigo space-y-6">
     <div class="glass p-5 rounded-2xl flex flex-col xl:flex-row xl:items-end gap-4 justify-between">
         <div>
             <p class="text-xs uppercase tracking-widest text-zinc-500 font-bold">Laporan Aktivitas</p>
@@ -15,18 +15,18 @@
     </div>
 
     <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div class="glass p-5 rounded-2xl">
+        <div class="stat-card stat-green p-5 rounded-2xl">
             <p class="text-xs uppercase tracking-widest text-zinc-500 font-bold">Penghasilan</p>
-            <h3 class="text-2xl font-semibold mt-3 text-success" x-text="formatCurrency(activityReport.summary.totalIncome)"></h3>
+            <h3 class="text-2xl font-semibold mt-3" x-text="formatCurrency(activityReport.summary.totalIncome)"></h3>
         </div>
-        <div class="glass p-5 rounded-2xl">
+        <div class="stat-card stat-red p-5 rounded-2xl">
             <p class="text-xs uppercase tracking-widest text-zinc-500 font-bold">Beban</p>
-            <h3 class="text-2xl font-semibold mt-3 text-danger" x-text="formatCurrency(activityReport.summary.totalExpense)"></h3>
+            <h3 class="text-2xl font-semibold mt-3" x-text="formatCurrency(activityReport.summary.totalExpense)"></h3>
         </div>
-        <div class="glass p-5 rounded-2xl">
+        <div class="stat-card rounded-2xl p-5" :class="activityReport.summary.isSurplus ? 'stat-blue' : 'stat-orange'">
             <p class="text-xs uppercase tracking-widest text-zinc-500 font-bold" x-text="activityReport.summary.surplusLabel"></p>
-            <h3 class="text-2xl font-semibold mt-3" :class="activityReport.summary.isSurplus ? 'text-success' : 'text-danger'" x-text="formatCurrency(Math.abs(activityReport.summary.surplusDeficit))"></h3>
-            <p class="text-xs text-zinc-500 mt-2" x-text="activityReport.journalCount + ' jurnal terposting'"></p>
+            <h3 class="text-2xl font-semibold mt-3" x-text="formatCurrency(Math.abs(activityReport.summary.surplusDeficit))"></h3>
+            <p class="text-xs opacity-90 mt-2" x-text="activityReport.journalCount + ' jurnal terposting'"></p>
         </div>
     </div>
 
@@ -92,22 +92,22 @@
     </div>
 
     <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div class="glass p-5 rounded-2xl">
+        <div class="stat-card stat-blue p-5 rounded-2xl">
             <p class="text-xs uppercase tracking-widest text-zinc-500 font-bold">SPP Lunas</p>
             <h3 class="text-2xl font-semibold mt-3" x-text="operationalReport.spp.paidPercentage + '%'"></h3>
-            <p class="text-xs text-zinc-500 mt-2" x-text="operationalReport.spp.paid + ' dari ' + operationalReport.spp.total + ' tagihan'"></p>
+            <p class="text-xs opacity-90 mt-2" x-text="operationalReport.spp.paid + ' dari ' + operationalReport.spp.total + ' tagihan'"></p>
         </div>
-        <div class="glass p-5 rounded-2xl">
+        <div class="stat-card stat-red p-5 rounded-2xl">
             <p class="text-xs uppercase tracking-widest text-zinc-500 font-bold">Tunggakan SPP</p>
-            <h3 class="text-2xl font-semibold mt-3 text-danger" x-text="formatCurrency(operationalReport.spp.unpaidAmount)"></h3>
+            <h3 class="text-2xl font-semibold mt-3" x-text="formatCurrency(operationalReport.spp.unpaidAmount)"></h3>
         </div>
-        <div class="glass p-5 rounded-2xl">
+        <div class="stat-card stat-green p-5 rounded-2xl">
             <p class="text-xs uppercase tracking-widest text-zinc-500 font-bold">Donasi Masuk</p>
-            <h3 class="text-2xl font-semibold mt-3 text-success" x-text="formatCurrency(operationalReport.donations.totalReceived)"></h3>
+            <h3 class="text-2xl font-semibold mt-3" x-text="formatCurrency(operationalReport.donations.totalReceived)"></h3>
         </div>
-        <div class="glass p-5 rounded-2xl">
+        <div class="stat-card stat-orange p-5 rounded-2xl">
             <p class="text-xs uppercase tracking-widest text-zinc-500 font-bold">Total Pengeluaran</p>
-            <h3 class="text-2xl font-semibold mt-3 text-danger" x-text="formatCurrency(operationalReport.expenses.total)"></h3>
+            <h3 class="text-2xl font-semibold mt-3" x-text="formatCurrency(operationalReport.expenses.total)"></h3>
         </div>
     </div>
 

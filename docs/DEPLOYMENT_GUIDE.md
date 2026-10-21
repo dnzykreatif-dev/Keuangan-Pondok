@@ -36,13 +36,26 @@ Opsional untuk QRIS provider:
 
 ## 4. Deploy Apps Script
 
+Sebelum push, pastikan `.clasp.json` menunjuk ke project yang dimaksud,
+periksa `clasp status`, dan cocokkan perubahan lokal dengan editor Apps Script.
+Untuk project yang sudah memiliki Web App, gunakan deployment ID yang sama.
+
 Dengan clasp:
 
 ```bash
-clasp push --force
+clasp push
+clasp version "Deskripsi rilis"
+clasp deployments
+clasp deploy -i DEPLOYMENT_ID -V NOMOR_VERSI -d "Deskripsi rilis"
 ```
 
-Lalu di Apps Script Editor:
+Jika `clasp push` menampilkan `Skipping push.`, berhenti dan verifikasi kode di
+editor. Membuat versi tidak menyalin berkas lokal; versi dibuat dari kode yang
+ada di server. Jangan memakai `--force` tanpa pemeriksaan konflik karena bisa
+menimpa perubahan editor. Panduan lengkap dan kasus loading terdahulu ada di
+`docs/RELEASE_OPERATIONS.md`.
+
+Untuk instalasi baru, setelah push buka Apps Script Editor:
 
 1. Buka project.
 2. Jalankan `setupDatabase()`.
@@ -76,3 +89,25 @@ Contoh payload uji:
 - Tes payment order kecil di sandbox/provider.
 - Pastikan callback sukses membuat jurnal sekali meski dikirim berulang.
 - Backup spreadsheet sebelum migrasi data besar.
+
+## 7. Provisioning Pondok Pembeli
+
+Untuk membuat instalasi terpisah bagi pembeli, siapkan project kontrol penjual
+dengan Script Properties berikut:
+
+```text
+PROVISIONING_TEMPLATE_SPREADSHEET_ID=ID-Spreadsheet-template-kosong
+PROVISIONING_TEMPLATE_SCRIPT_ID=ID-project-template-opsional
+PROVISIONING_PARENT_FOLDER_ID=ID-folder-Drive-opsional
+```
+
+Dari menu Pengaturan sebagai Admin, isi nama pondok, TenantID, email pemilik,
+dan email support, lalu klik `Buat Paket Instalasi`. Sistem akan menyalin
+Spreadsheet template dan project Apps Script ke folder baru, kemudian mencoba
+membagikan folder kepada email pemilik.
+
+Jangan gunakan Spreadsheet produksi sebagai template. Setelah paket dibuat,
+buka project hasil salinan, isi Script Properties tenant, jalankan
+`setupDatabase()`, deploy sebagai Web App, uji login, lalu transfer ownership
+kepada akun Google milik pondok. Deployment dan transfer ownership sengaja
+tetap menjadi langkah verifikasi manual.

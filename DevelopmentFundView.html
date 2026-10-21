@@ -1,4 +1,4 @@
-<div x-show="view === 'development'" class="animate-in space-y-6">
+<div x-show="view === 'development'" class="animate-in page-accent accent-purple space-y-6">
     <div class="glass p-5 rounded-2xl flex flex-col xl:flex-row xl:items-end gap-4 justify-between">
         <div>
             <h2 class="text-xl font-semibold">Dana Pembangunan</h2>
@@ -10,7 +10,15 @@
     </div>
     <div class="grid grid-cols-1 xl:grid-cols-3 gap-6">
         <div class="glass p-6 rounded-2xl">
-            <h3 class="font-semibold mb-5">Tambah Proyek Pembangunan</h3>
+            <div class="mb-5 flex items-center gap-3">
+                <div class="w-11 h-11 rounded-2xl bg-purple-100 text-purple-700 flex items-center justify-center">
+                    <i data-lucide="landmark" class="w-5 h-5"></i>
+                </div>
+                <div>
+                    <h3 class="font-semibold">Tambah Proyek Pembangunan</h3>
+                    <p class="text-xs text-zinc-500">Pantau target dan realisasi</p>
+                </div>
+            </div>
             <div class="space-y-4">
                 <input type="text" x-model="newProject.name" placeholder="Nama proyek, contoh: Asrama Baru" class="w-full p-2.5">
                 <input type="number" x-model="newProject.target_budget" placeholder="Target anggaran" class="w-full p-2.5">
@@ -20,18 +28,21 @@
                 </div>
                 <select x-model="newProject.status" class="w-full p-2.5"><option>Aktif</option><option>Selesai</option><option>Ditunda</option></select>
                 <textarea x-model="newProject.description" placeholder="Keterangan proyek" class="w-full p-2.5"></textarea>
-                <button type="button" @click="handleAddProject" :disabled="loading" class="w-full bg-primary text-white py-3 rounded-lg font-semibold disabled:opacity-60 disabled:cursor-not-allowed">Simpan Proyek</button>
+                <button type="button" @click="handleAddProject" :disabled="loading" class="w-full btn-action btn-action-primary disabled:opacity-60 disabled:cursor-not-allowed">
+                    <i data-lucide="save" class="w-4 h-4"></i>
+                    <span>Simpan Proyek</span>
+                </button>
             </div>
         </div>
         <div class="xl:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-4">
             <template x-for="project in developmentProjects" :key="project.project_id">
-                <div class="glass p-5 rounded-2xl space-y-4">
+                <div class="glass p-5 rounded-2xl space-y-4 border-l-4 border-l-purple-500">
                     <div class="flex items-start justify-between gap-3">
                         <div>
                             <h3 class="font-semibold" x-text="project.name"></h3>
                             <p class="text-xs text-zinc-500" x-text="project.status"></p>
                         </div>
-                        <span class="text-xs px-2 py-1 rounded bg-primary/20 text-primary" x-text="project.progress_percent + '%'"></span>
+                        <span class="text-xs px-2 py-1 rounded-full bg-purple-100 text-purple-700 font-bold" x-text="project.progress_percent + '%'"></span>
                     </div>
                     <div class="h-3 bg-[#edf4fb] rounded-full overflow-hidden">
                         <div class="h-full bg-success" :style="'width:' + project.progress_percent + '%'"></div>
@@ -44,8 +55,8 @@
                     </div>
                     <p class="text-sm text-zinc-500" x-text="project.description || 'Belum ada keterangan.'"></p>
                     <div class="flex gap-3 pt-2 border-t border-[#e6edf5]">
-                        <button @click="editProjectData(project)" class="text-primary text-sm font-semibold">Edit</button>
-                        <button @click="deleteProjectData(project)" class="text-danger text-sm font-semibold">Hapus</button>
+                        <button @click="editProjectData(project)">Edit</button>
+                        <button @click="deleteProjectData(project)" class="text-danger">Hapus</button>
                     </div>
                 </div>
             </template>

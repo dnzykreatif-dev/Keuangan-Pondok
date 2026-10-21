@@ -1,7 +1,14 @@
-<div x-show="view === 'billing'" class="animate-in">
+<div x-show="view === 'billing'" class="animate-in page-accent accent-indigo">
     <div class="glass p-8 rounded-2xl max-w-2xl">
-        <h2 class="text-xl font-semibold mb-2">Generate Tagihan SPP</h2>
-        <p class="text-sm text-zinc-500 mb-6">Buat tagihan untuk semua santri aktif, kelas tertentu, atau satu nama santri.</p>
+        <div class="mb-6 flex items-start gap-4">
+            <div class="w-12 h-12 rounded-2xl bg-primary/10 text-primary flex items-center justify-center">
+                <i data-lucide="file-plus-2" class="w-6 h-6"></i>
+            </div>
+            <div>
+                <h2 class="text-xl font-semibold mb-2">Generate Tagihan SPP</h2>
+                <p class="text-sm text-zinc-500">Buat tagihan untuk semua santri aktif, kelas tertentu, atau satu nama santri. Setelah sukses, preview WhatsApp akan muncul untuk nomor wali yang valid.</p>
+            </div>
+        </div>
         <div class="space-y-4">
             <div>
                 <label class="block text-sm mb-1 text-slate-500">Bulan & Tahun</label>
@@ -40,7 +47,10 @@
                 <label class="block text-sm mb-1 text-slate-500">Nominal (Rp)</label>
                 <input type="number" x-model="genBill.nominal" class="w-full p-2.5 outline-none focus:ring-1 focus:ring-primary">
             </div>
-            <button type="button" @click="handleGenerateBills" :disabled="loading" class="w-full bg-primary text-white py-3 rounded-lg font-semibold disabled:opacity-60 disabled:cursor-not-allowed">Generate Tagihan</button>
+            <button type="button" @click="handleGenerateBills" :disabled="loading" class="w-full btn-action btn-action-primary disabled:opacity-60 disabled:cursor-not-allowed">
+                <i data-lucide="sparkles" class="w-4 h-4"></i>
+                <span>Generate Tagihan</span>
+            </button>
         </div>
     </div>
 </div>

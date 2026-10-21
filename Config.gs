@@ -1,10 +1,40 @@
 const APP_CONFIG = Object.freeze({
   SPREADSHEET_ID: '12Mmvz6VehTFlXulxAH5GRGAksheB3u4JSqO2Ltx7iYA',
+  INSTALLATION_MODE_DEFAULT: 'legacy',
   DEFAULT_PAYMENT_PROVIDER: 'MOCK_QRIS',
   DEFAULT_CURRENCY: 'IDR',
   DEFAULT_ADMIN_USERNAME: 'admin',
   DEFAULT_ADMIN_PASSWORD: 'admin123'
 });
+
+/**
+ * Resolves the database for the current installation.
+ *
+ * Legacy mode keeps the original hard-coded spreadsheet for compatibility.
+ * Tenant mode is intentionally strict: a buyer installation must provide its
+ * own Spreadsheet ID through Script Properties and must never silently fall
+ * back to the seller's database.
+ */
+function getInstallationMode_() {
+  const mode = String(
+    PropertiesService.getScriptProperties().getProperty('INSTALLATION_MODE') ||
+      APP_CONFIG.INSTALLATION_MODE_DEFAULT
+  ).trim().toLowerCase();
+  return ['legacy', 'tenant'].includes(mode) ? mode : 'legacy';
+}
+
+function getConfiguredSpreadsheetId_() {
+  const configured = String(
+    PropertiesService.getScriptProperties().getProperty('SPREADSHEET_ID') || ''
+  ).trim();
+  if (configured) return configured;
+  if (getInstallationMode_() === 'tenant') {
+    throw new Error(
+      'Instalasi pondok belum dikonfigurasi. Isi Script Property SPREADSHEET_ID terlebih dahulu.'
+    );
+  }
+  return APP_CONFIG.SPREADSHEET_ID;
+}
 
 const SHEET_HEADERS = Object.freeze({
   users: ['username', 'password_hash', 'role'],
@@ -12,6 +42,7 @@ const SHEET_HEADERS = Object.freeze({
   billings: ['id_billing', 'id_santri', 'bulan', 'tahun', 'nominal', 'status', 'billing_type', 'description', 'fund_id', 'unit_id', 'program_id'],
   transactions: ['id_transaksi', 'id_santri', 'id_billing', 'tanggal', 'jumlah_bayar', 'metode', 'status', 'penerima'],
   settings: ['key', 'value'],
+  notification_logs: ['log_id', 'type', 'id_santri', 'id_billing', 'phone', 'message', 'status', 'created_at', 'created_by'],
   accounts: ['account_id', 'code', 'name', 'type', 'report_category', 'normal_balance', 'is_active'],
   funds: ['fund_id', 'name', 'restriction_type', 'is_active'],
   units: ['unit_id', 'name', 'description', 'is_active'],
@@ -102,6 +133,23 @@ const DEFAULT_PROGRAMS = Object.freeze([
   ['PROGRAM_BEASISWA', 'Beasiswa', 'Program bantuan pendidikan santri', true],
   ['PROGRAM_WAKAF', 'Wakaf', 'Program penghimpunan dan pengelolaan wakaf', true]
 ]);
+
+const DEFAULT_APP_SETTINGS = Object.freeze({
+  wa_enabled: 'TRUE',
+  wa_mode: 'MANUAL_LINK',
+  wa_sender_name: 'Admin Pesantren',
+  wa_gateway_url: '',
+  wa_gateway_api_key_property: 'WA_API_KEY',
+  wa_gateway_auth_header: 'Authorization',
+  wa_gateway_auth_prefix: 'Bearer',
+  wa_gateway_phone_field: 'phone',
+  wa_gateway_message_field: 'message',
+  wa_gateway_extra_payload: '',
+  wa_admin_phone: '',
+  wa_admin_payment_template: "Pembayaran masuk:\\nNama: {student_name}\\nKelas: {class_name}\\nPeriode: {billing_label}\\nNominal: {amount}\\nMetode: {payment_method}\\nTanggal: {payment_date}\\nID: {payment_id}",
+  wa_tagihan_template: "Assalamu'alaikum {wali_name},\\n\\nTagihan SPP an. {student_name} periode {billing_label} sebesar {amount} belum dibayar.\\n\\nSilakan lakukan pembayaran melalui kanal yang tersedia.\\n\\nTerima kasih.\\n{sender_name}",
+  wa_lunas_template: "Assalamu'alaikum {wali_name},\\n\\nPembayaran SPP an. {student_name} periode {billing_label} sebesar {amount} sudah diterima dan dinyatakan lunas.\\n\\nTerima kasih atas kerja samanya.\\n{sender_name}"
+});
 
 const DEFAULT_PAYMENT_PROVIDERS = Object.freeze([
   ['MOCK_QRIS', 'Mock QRIS Dinamis', 'QRIS_MPM_DINAMIS', 'ACTIVE', 'sandbox', '', 'QRIS_CALLBACK_SECRET', true],

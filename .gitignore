@@ -8,6 +8,7 @@ desktop.ini
 .env.*
 *.secret
 secrets/
+baileys-gateway/.baileys-auth/
 
 # Apps Script / clasp local files
 .clasprc.json

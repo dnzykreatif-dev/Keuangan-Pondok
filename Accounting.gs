@@ -1,29 +1,31 @@
 function seedAccountingDefaults() {
-  ensureAccountingSheets();
+  withSetupCache('accounting-defaults', 21600, function () {
+    ensureAccountingSheets();
 
-  const accountSheet = getSheetOrThrow('accounts');
-  appendMissingRowsByKey(accountSheet, 1, DEFAULT_ACCOUNTS);
+    const accountSheet = getSheetOrThrow('accounts');
+    appendMissingRowsByKey(accountSheet, 1, DEFAULT_ACCOUNTS);
 
-  const fundSheet = getSheetOrThrow('funds');
-  appendMissingRowsByKey(fundSheet, 0, DEFAULT_FUNDS);
+    const fundSheet = getSheetOrThrow('funds');
+    appendMissingRowsByKey(fundSheet, 0, DEFAULT_FUNDS);
 
-  const unitSheet = getSheetOrThrow('units');
-  appendMissingRowsByKey(unitSheet, 0, DEFAULT_UNITS);
+    const unitSheet = getSheetOrThrow('units');
+    appendMissingRowsByKey(unitSheet, 0, DEFAULT_UNITS);
 
-  const programSheet = getSheetOrThrow('programs');
-  appendMissingRowsByKey(programSheet, 0, DEFAULT_PROGRAMS);
+    const programSheet = getSheetOrThrow('programs');
+    appendMissingRowsByKey(programSheet, 0, DEFAULT_PROGRAMS);
 
-  const periodSheet = getSheetOrThrow('fiscal_periods');
-  if (periodSheet.getLastRow() === 1) {
-    const currentYear = new Date().getFullYear();
-    periodSheet.appendRow([
-      `PERIOD_${currentYear}`,
-      `Tahun ${currentYear}`,
-      new Date(currentYear, 0, 1),
-      new Date(currentYear, 11, 31),
-      'Open'
-    ]);
-  }
+    const periodSheet = getSheetOrThrow('fiscal_periods');
+    if (periodSheet.getLastRow() === 1) {
+      const currentYear = new Date().getFullYear();
+      periodSheet.appendRow([
+        `PERIOD_${currentYear}`,
+        `Tahun ${currentYear}`,
+        new Date(currentYear, 0, 1),
+        new Date(currentYear, 11, 31),
+        'Open'
+      ]);
+    }
+  });
 }
 
 function ensureAccountingSheets() {
@@ -136,8 +138,8 @@ function validateJournalLines(lines) {
   return { totalDebit, totalCredit };
 }
 
-function postJournalEntry(entryData) {
-  seedAccountingDefaults();
+function postJournalEntry(entryData, skipSeed) {
+  if (!skipSeed) seedAccountingDefaults();
 
   const sourceType = normalizeText(entryData.source_type);
   const sourceId = normalizeText(entryData.source_id);
@@ -171,7 +173,11 @@ function postJournalEntry(entryData) {
     programId
   ]);
 
-  const rows = entryData.lines.map(line => buildJournalLine(journalId, line));
+  const accountMap = {};
+  getActiveAccounts().forEach(account => {
+    accountMap[String(account.code)] = account;
+  });
+  const rows = entryData.lines.map(line => buildJournalLineWithAccountMap(journalId, line, accountMap));
   appendRows(lineSheet, rows);
   recordAuditLog(createdBy, 'POST_JOURNAL', 'journal_entries', journalId, `${sourceType}:${sourceId}`);
 
@@ -416,7 +422,7 @@ function postCashInJournal(data = {}) {
   });
 }
 
-function postCashOutJournal(data = {}) {
+function postCashOutJournal(data = {}, skipSeed) {
   const amount = normalizeNumber(data.amount);
   const debitAccount = data.debit_account_code || DEFAULT_ACCOUNT_CODES.OPERATIONAL_EXPENSE;
 
@@ -433,7 +439,7 @@ function postCashOutJournal(data = {}) {
       { account_code: debitAccount, debit: amount, credit: 0, memo: data.memo || '' },
       { account_code: DEFAULT_ACCOUNT_CODES.CASH_BANK, debit: 0, credit: amount, memo: data.memo || '' }
     ]
-  });
+  }, skipSeed);
 }
 
 function postDonationJournal(data = {}) {

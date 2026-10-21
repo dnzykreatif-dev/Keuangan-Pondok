@@ -1,28 +1,86 @@
-<div x-show="view === 'payments'" class="animate-in space-y-6">
+<div x-show="view === 'payments'" class="animate-in page-accent accent-blue space-y-6">
     <div class="flex flex-col sm:flex-row justify-between gap-4">
         <div>
             <h2 class="text-xl font-semibold">Pembayaran</h2>
-            <p class="text-sm text-zinc-500 mt-1">Catat Tunai, Transfer, atau buat QRIS untuk tagihan SPP.</p>
+            <p class="text-sm text-zinc-500 mt-1">Catat Tunai, Transfer, atau buat QRIS untuk tagihan SPP. Nama santri dan bulan tagihan ikut tercatat di kas.</p>
         </div>
         <button @click="fetchPaymentOrders(true)" class="btn-soft px-4 py-2 rounded-lg text-sm font-semibold flex items-center gap-2">
             <i data-lucide="refresh-cw" class="w-4 h-4"></i>Refresh QRIS
         </button>
     </div>
-    <div class="glass p-5 rounded-2xl">
-        <p class="text-sm text-zinc-500">Untuk mencatat pembayaran, buka menu <strong class="text-slate-900">Data Santri</strong>, pilih santri, lalu klik <strong class="text-slate-900">Bayar</strong>. Modal pembayaran menyediakan metode Tunai, Transfer, dan QRIS.</p>
+
+    <div class="glass rounded-2xl p-5">
+        <div class="grid grid-cols-1 lg:grid-cols-[1.1fr_1fr_0.8fr] gap-4">
+            <div>
+                <label class="block text-sm font-medium text-slate-500 mb-2">Nama Santri</label>
+                <select x-model="paymentData.id_santri" @change="selectPaymentStudentFromMenu()" class="w-full p-2.5 outline-none focus:ring-1 focus:ring-primary">
+                    <option value="">-- Pilih santri --</option>
+                    <template x-for="student in santriList.filter(item => item.status === 'Aktif')" :key="student.id_santri">
+                        <option :value="student.id_santri" x-text="student.nama + ' - ' + (student.kelas || '-')"></option>
+                    </template>
+                </select>
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-slate-500 mb-2">Bulan Tagihan</label>
+                <select x-model="paymentData.id_billing" @change="setPaymentAmountFromSelectedBill" :disabled="!selectedSantri || unpaidBills.length === 0" class="w-full p-2.5 outline-none focus:ring-1 focus:ring-primary disabled:opacity-60">
+                    <option value="" x-text="selectedSantri ? '-- Pilih bulan tunggakan --' : 'Pilih santri dulu'"></option>
+                    <template x-for="bill in unpaidBills" :key="bill.id_billing">
+                        <option :value="bill.id_billing" x-text="bill.bulan + ' ' + bill.tahun + ' - sisa ' + formatCurrency(bill.remaining_amount || bill.nominal)"></option>
+                    </template>
+                </select>
+                <p x-show="selectedSantri && unpaidBills.length === 0" class="text-xs text-success font-semibold mt-2">Santri ini tidak punya tunggakan SPP.</p>
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-slate-500 mb-2">Nominal Bayar</label>
+                <input type="number" x-model="paymentData.amount" :disabled="!paymentData.id_billing" class="w-full p-2.5 outline-none focus:ring-1 focus:ring-primary disabled:opacity-60">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-slate-500 mb-2">Metode</label>
+                <select x-model="paymentData.method" class="w-full p-2.5 outline-none focus:ring-1 focus:ring-primary">
+                    <template x-for="method in paymentMethodOptions" :key="method">
+                        <option :value="method" x-text="method"></option>
+                    </template>
+                </select>
+            </div>
+            <div x-show="paymentData.method !== 'QRIS'">
+                <label class="block text-sm font-medium text-slate-500 mb-2">Bukti Pembayaran</label>
+                <input type="file" @change="handleFileUpload($event, paymentData)" class="block w-full text-sm text-zinc-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-bold file:bg-primary/10 file:text-primary">
+            </div>
+            <div class="flex items-end">
+                <button @click="handleProcessPayment" :disabled="loading || !paymentData.id_billing" class="w-full bg-primary text-white py-3 rounded-lg font-semibold disabled:opacity-60 disabled:cursor-not-allowed" x-text="paymentData.method === 'QRIS' ? 'Buat QRIS' : 'Catat Bayar'"></button>
+            </div>
+        </div>
+
+        <div x-show="paymentOutcome" class="mt-4 p-4 rounded-2xl border border-emerald-200 bg-emerald-50">
+            <p class="font-semibold text-emerald-800" x-text="paymentOutcome?.message || 'Pembayaran berhasil dicatat'"></p>
+            <button
+                x-show="paymentOutcome?.invoice"
+                @click="openInvoice(paymentOutcome.invoice)"
+                class="mt-3 mr-2 bg-slate-900 text-white px-4 py-2 rounded-lg text-sm font-semibold">
+                Lihat / Cetak Invoice
+            </button>
+            <button
+                x-show="paymentOutcome?.whatsapp_receipt?.link"
+                @click="openWhatsAppLink(paymentOutcome.whatsapp_receipt.link)"
+                class="mt-3 bg-green-600 text-white px-4 py-2 rounded-lg text-sm font-semibold">
+                Kirim Bukti Lunas ke WA
+            </button>
+        </div>
     </div>
+
     <div class="glass rounded-2xl overflow-hidden">
         <div class="p-5 border-b border-[#e6edf5]"><h3 class="font-semibold">Riwayat Order QRIS</h3></div>
         <div class="overflow-x-auto">
             <table class="w-full text-left">
                 <thead>
-                    <tr><th class="p-4">Tanggal</th><th class="p-4">Order</th><th class="p-4">Provider</th><th class="p-4 text-right">Nominal</th><th class="p-4">Status</th><th class="p-4">Link/QR</th><th class="p-4">Aksi</th></tr>
+                    <tr><th class="p-4">Tanggal</th><th class="p-4">Santri</th><th class="p-4">Tagihan</th><th class="p-4">Provider</th><th class="p-4 text-right">Nominal</th><th class="p-4">Status</th><th class="p-4">Link/QR</th><th class="p-4">Aksi</th></tr>
                 </thead>
                 <tbody class="divide-y divide-[#e6edf5]">
                     <template x-for="order in paymentOrders" :key="order.order_id">
                         <tr class="hover:bg-[#f5f9fd] transition-colors">
                             <td class="p-4 text-zinc-400 whitespace-nowrap" x-text="formatDate(order.created_at)"></td>
-                            <td class="p-4 text-xs text-zinc-500" x-text="order.order_id"></td>
+                            <td class="p-4"><p class="font-semibold" x-text="order.student_name || '-'"></p><p class="text-xs text-zinc-500" x-text="order.class_name || '-'"></p></td>
+                            <td class="p-4"><p class="font-semibold" x-text="order.billing_label || order.id_billing"></p><p class="text-xs text-zinc-500" x-text="order.order_id"></p></td>
                             <td class="p-4 font-semibold" x-text="order.provider_id"></td>
                             <td class="p-4 text-right" x-text="formatCurrency(order.amount)"></td>
                             <td class="p-4"><span class="px-2 py-1 rounded text-xs font-semibold" :class="String(order.status).toUpperCase() === 'PAID' ? 'bg-success/20 text-success' : 'bg-primary/20 text-primary'" x-text="order.status"></span></td>
@@ -30,7 +88,7 @@
                             <td class="p-4"><button @click="deletePaymentData({ id_transaksi: order.order_id })" class="text-danger text-sm font-semibold">Hapus/Batal</button></td>
                         </tr>
                     </template>
-                    <tr x-show="paymentOrders.length === 0"><td colspan="7" class="p-6 text-center text-sm text-zinc-500">Belum ada order QRIS.</td></tr>
+                    <tr x-show="paymentOrders.length === 0"><td colspan="8" class="p-6 text-center text-sm text-zinc-500">Belum ada order QRIS.</td></tr>
                 </tbody>
             </table>
         </div>

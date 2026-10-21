@@ -10,9 +10,11 @@ function ensureOperationalSheets() {
 }
 
 function seedOperationalDefaults() {
-  ensureOperationalSheets();
-  const categorySheet = getSheetOrThrow('expense_categories');
-  appendMissingRowsByKey(categorySheet, 0, DEFAULT_EXPENSE_CATEGORIES);
+  withSetupCache('operational-defaults', 21600, function () {
+    ensureOperationalSheets();
+    const categorySheet = getSheetOrThrow('expense_categories');
+    appendMissingRowsByKey(categorySheet, 0, DEFAULT_EXPENSE_CATEGORIES);
+  });
 }
 
 function saveOptionalProof(base64, prefix) {
@@ -69,8 +71,8 @@ function resolveDashboardPeriod(mode, month, year) {
   };
 }
 
-function recordCashTransaction(data) {
-  seedOperationalDefaults();
+function recordCashTransaction(data, skipSeed) {
+  if (!skipSeed) seedOperationalDefaults();
 
   const amount = normalizeNumber(data.amount);
   if (amount <= 0) {
@@ -184,10 +186,10 @@ function getTopExpenses(expenses, limit) {
     .slice(0, limit || 5);
 }
 
-function getOperationalDashboardData(mode, month, year) {
+function getOperationalDashboardData(mode, month, year, skipSeed) {
   const period = resolveDashboardPeriod(mode, month, year);
   return withBootstrapCache(`dashboard:${period.scopeKey}`, 180, function () {
-    seedOperationalDefaults();
+    if (!skipSeed) seedOperationalDefaults();
 
     const cashRows = getSheetData('cash_transactions');
     const periodCashRows = period.mode === 'MONTH'
@@ -195,6 +197,7 @@ function getOperationalDashboardData(mode, month, year) {
       : cashRows;
     const billings = getSheetData('billings');
     const santri = getSheetData('santri');
+    const transactions = getSheetData('transactions');
     const donations = getSheetData('donations');
     const expenses = getSheetData('expenses');
     const periodDonations = period.mode === 'MONTH'
@@ -211,10 +214,8 @@ function getOperationalDashboardData(mode, month, year) {
     const expenseThisMonth = periodCashRows
       .filter(row => row.direction === 'Keluar')
       .reduce((sum, row) => sum + normalizeNumber(row.amount), 0);
-    const totalArrears = billings
-      .filter(billing => billing.status === 'Belum Lunas')
-      .map(enrichBillWithPaymentStatus)
-      .reduce((sum, billing) => sum + normalizeNumber(billing.remaining_amount), 0);
+    const unpaidBills = buildArrearsRecap(santri, billings, transactions);
+    const totalArrears = unpaidBills.reduce((sum, billing) => sum + normalizeNumber(billing.remaining_amount), 0);
     const donationThisMonth = periodDonations.reduce((sum, donation) => sum + normalizeNumber(donation.amount), 0);
 
     return {
@@ -237,7 +238,7 @@ function getOperationalDashboardData(mode, month, year) {
           { label: 'Pengeluaran', amount: expenseThisMonth }
         ],
         topExpenses: getTopExpenses(periodExpenses, 5),
-        unpaidBills: getArrearsRecap().data.slice(0, 10)
+        unpaidBills: unpaidBills.slice(0, 10)
       }
     };
   });
@@ -251,9 +252,9 @@ function getBootstrapData() {
   return withBootstrapCache('bootstrap', 180, function () {
     seedOperationalDefaults();
 
-    const dashboard = getOperationalDashboardData().data;
-    const developmentProjects = getDevelopmentProjects().data;
-    const expenseCategories = getExpenseCategories().data;
+    const dashboard = getOperationalDashboardData(undefined, undefined, undefined, true).data;
+    const developmentProjects = getDevelopmentProjects(true).data;
+    const expenseCategories = getExpenseCategories(true).data;
 
     return {
       ok: true,
@@ -270,6 +271,8 @@ function getOperationalReportData() {
   seedOperationalDefaults();
 
   const billings = getSheetData('billings');
+  const transactions = getSheetData('transactions');
+  const paidAmountByBillingId = buildPaidAmountByBillingId(transactions);
   const donations = getSheetData('donations');
   const expenses = getSheetData('expenses');
   const cashRows = getSheetData('cash_transactions').sort((a, b) => new Date(a.date) - new Date(b.date));
@@ -277,9 +280,9 @@ function getOperationalReportData() {
   const paidBills = billings.filter(bill => bill.status === 'Lunas');
   const unpaidBills = billings
     .filter(bill => bill.status === 'Belum Lunas')
-    .map(enrichBillWithPaymentStatus)
+    .map(bill => enrichBillWithPaymentStatus(bill, paidAmountByBillingId))
     .filter(bill => bill.remaining_amount > 0);
-  const paidSppAmount = getSheetData('transactions')
+  const paidSppAmount = transactions
     .filter(transaction => String(transaction.status).toUpperCase() === 'PAID')
     .reduce((sum, transaction) => sum + normalizeNumber(transaction.jumlah_bayar), 0);
   const receivedDonations = donations.filter(donation => donation.status === 'Masuk');

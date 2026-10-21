@@ -1,8 +1,10 @@
 function seedPaymentDefaults() {
-  ensurePaymentSheets();
+  withSetupCache('payment-defaults', 21600, function () {
+    ensurePaymentSheets();
 
-  const providerSheet = getSheetOrThrow('payment_providers');
-  appendMissingRowsByKey(providerSheet, 0, DEFAULT_PAYMENT_PROVIDERS);
+    const providerSheet = getSheetOrThrow('payment_providers');
+    appendMissingRowsByKey(providerSheet, 0, DEFAULT_PAYMENT_PROVIDERS);
+  });
 }
 
 function ensurePaymentSheets() {
@@ -155,17 +157,27 @@ function buildPaymentOrder(payment, bill) {
 }
 
 function getPaidAmountForBilling(idBilling) {
-  return getSheetData('transactions')
-    .filter(transaction => (
-      transaction.id_billing === idBilling &&
-      String(transaction.status).toUpperCase() === 'PAID'
-    ))
-    .reduce((sum, transaction) => sum + normalizeNumber(transaction.jumlah_bayar), 0);
+  return buildPaidAmountByBillingId(getSheetData('transactions'))[idBilling] || 0;
 }
 
-function enrichBillWithPaymentStatus(bill) {
+function buildPaidAmountByBillingId(transactions) {
+  return (transactions || [])
+    .filter(transaction => (
+      String(transaction.status).toUpperCase() === 'PAID'
+    ))
+    .reduce((totals, transaction) => {
+      const billingId = transaction.id_billing;
+      if (!billingId) return totals;
+      totals[billingId] = (totals[billingId] || 0) + normalizeNumber(transaction.jumlah_bayar);
+      return totals;
+    }, {});
+}
+
+function enrichBillWithPaymentStatus(bill, paidAmountByBillingId) {
   const nominal = normalizeNumber(bill.nominal);
-  const paidAmount = getPaidAmountForBilling(bill.id_billing);
+  const paidAmount = paidAmountByBillingId
+    ? normalizeNumber(paidAmountByBillingId[bill.id_billing])
+    : getPaidAmountForBilling(bill.id_billing);
   const remainingAmount = Math.max(nominal - paidAmount, 0);
   return {
     ...bill,
@@ -277,9 +289,27 @@ function generatePaymentLink(id_santri) {
 function getPaymentOrders(limit) {
   seedPaymentDefaults();
   const maxRows = normalizeNumber(limit, 50);
+  const studentsById = getSheetData('santri').reduce((map, student) => {
+    map[student.id_santri] = student;
+    return map;
+  }, {});
+  const billingsById = getSheetData('billings').reduce((map, bill) => {
+    map[bill.id_billing] = bill;
+    return map;
+  }, {});
   const data = getSheetData('payment_orders')
     .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
-    .slice(0, maxRows);
+    .slice(0, maxRows)
+    .map(order => {
+      const student = studentsById[order.id_santri] || {};
+      const bill = billingsById[order.id_billing] || {};
+      return {
+        ...order,
+        student_name: student.nama || '-',
+        class_name: student.kelas || '-',
+        billing_label: bill.bulan || bill.tahun ? `${bill.bulan || ''} ${bill.tahun || ''}`.trim() : order.id_billing
+      };
+    });
   return { ok: true, data };
 }
 
@@ -366,6 +396,8 @@ function verifyDuitkuCallback(payload) {
 function completePaidOrder(order, normalized, providerName) {
   const amount = normalizeNumber(normalized.amount || order.amount);
   const billing = getSheetData('billings').find(item => item.id_billing === order.id_billing) || {};
+  const student = getSheetData('santri').find(item => item.id_santri === order.id_santri) || null;
+  const existingTransaction = getTransactionByOrderId(order.order_id);
   updateTransactionStatus(order.order_id, 'PAID');
   updateBillingStatusFromPayments(order.id_billing);
   updateSheetRowByKey('payment_orders', 'order_id', order.order_id, {
@@ -380,7 +412,7 @@ function completePaidOrder(order, normalized, providerName) {
       source_id: order.order_id,
       amount,
       method: providerName || 'QRIS',
-      description: `Pembayaran SPP ${order.id_billing}`,
+      description: buildSppPaymentDescription(billing, student),
       fund_id: billing.fund_id || getDefaultFundId(),
       unit_id: billing.unit_id || getDefaultUnitId(),
       program_id: billing.program_id || getDefaultProgramId(),
@@ -389,6 +421,60 @@ function completePaidOrder(order, normalized, providerName) {
   }
   const journalResult = postPaymentJournal(order.order_id, order.id_billing, amount, providerName || 'QRIS');
   recordReconciliationLog(order, 'PAID', journalResult.skipped ? 'Jurnal pembayaran sudah pernah dibuat' : 'Jurnal pembayaran dibuat');
+
+  if (!existingTransaction || String(existingTransaction.status).toUpperCase() !== 'PAID') {
+    buildReceiptWhatsAppPreview(student, billing, {
+      id_transaksi: order.order_id,
+      tanggal: new Date(),
+      jumlah_bayar: amount,
+      metode: providerName || 'QRIS'
+    }, providerName || 'QRIS');
+    sendAdminPaymentWhatsAppNotification(student, billing, {
+      id_transaksi: order.order_id,
+      tanggal: new Date(),
+      jumlah_bayar: amount,
+      metode: providerName || 'QRIS'
+    }, providerName || 'QRIS');
+  }
+}
+
+function buildSppPaymentDescription(bill, student) {
+  const period = bill && (bill.bulan || bill.tahun)
+    ? `${bill.bulan || ''} ${bill.tahun || ''}`.trim()
+    : bill && bill.id_billing
+      ? bill.id_billing
+      : '';
+  const studentName = normalizeText(student && student.nama);
+  return `Pembayaran SPP${period ? ' ' + period : ''}${studentName ? ' - ' + studentName : ''}`;
+}
+
+function buildPaymentInvoice(payment, bill, student, remainingAmount) {
+  const settings = getAppSettings();
+  const appSettings = settings.ok ? settings.data || {} : {};
+  const paymentId = normalizeText(payment && (payment.id_transaksi || payment.payment_id)) || generateId('PAY');
+  const paymentDate = payment && payment.tanggal ? new Date(payment.tanggal) : new Date();
+  const amount = normalizeNumber(payment && (payment.jumlah_bayar || payment.amount));
+  const totalAmount = normalizeNumber(bill && bill.nominal);
+  const remaining = Math.max(normalizeNumber(remainingAmount), 0);
+
+  return {
+    invoice_number: `INV-${paymentId}`,
+    payment_id: paymentId,
+    issued_at: toIsoValue(paymentDate),
+    institution_name: appSettings.school_name || 'Ma\'had Raudhatul Ulum Pemangkat',
+    logo_url: appSettings.logo_url || '',
+    student_name: student ? student.nama : '-',
+    student_class: student ? student.kelas || '-' : '-',
+    billing_label: bill ? `${bill.bulan || ''} ${bill.tahun || ''}`.trim() : '-',
+    billing_id: bill ? bill.id_billing || '-' : '-',
+    amount,
+    total_amount: totalAmount,
+    remaining_amount: remaining,
+    status: remaining <= 0 ? 'LUNAS' : 'PEMBAYARAN SEBAGIAN',
+    method: payment && payment.metode ? payment.metode : '-',
+    recipient: payment && (payment.penerima || payment.created_by) ? (payment.penerima || payment.created_by) : '-',
+    description: buildSppPaymentDescription(bill, student)
+  };
 }
 
 function recordDirectPayment(payment) {
@@ -403,6 +489,7 @@ function recordDirectPayment(payment) {
     const bill = getSheetData('billings').find(item => item.id_billing === payment.id_billing);
     if (!bill) throw new Error('Tagihan tidak ditemukan');
     if (bill.status === 'Lunas') throw new Error('Tagihan sudah lunas');
+    const student = getSheetData('santri').find(item => item.id_santri === bill.id_santri) || null;
 
     const amount = normalizeNumber(payment.amount || bill.nominal);
     if (amount <= 0) throw new Error('Nominal pembayaran harus lebih dari nol');
@@ -412,17 +499,19 @@ function recordDirectPayment(payment) {
     const paymentId = generateId('PAYCASH');
     const proofUrl = saveOptionalProof(payment.proofBase64, paymentId);
     const actor = payment.penerima || payment.created_by || 'System';
-
-    appendObjectRow('transactions', {
+    const paymentDate = new Date();
+    const transactionRecord = {
       id_transaksi: paymentId,
       id_santri: bill.id_santri,
       id_billing: bill.id_billing,
-      tanggal: new Date(),
+      tanggal: paymentDate,
       jumlah_bayar: amount,
       metode: method,
       status: 'PAID',
       penerima: actor
-    });
+    };
+
+    appendObjectRow('transactions', transactionRecord);
     updateBillingStatusFromPayments(bill.id_billing);
     recordCashTransaction({
       direction: 'Masuk',
@@ -430,7 +519,7 @@ function recordDirectPayment(payment) {
       source_id: paymentId,
       amount,
       method,
-      description: `Pembayaran SPP ${bill.bulan} ${bill.tahun}`,
+      description: buildSppPaymentDescription(bill, student),
       proof_url: proofUrl,
       fund_id: bill.fund_id || getDefaultFundId(),
       unit_id: bill.unit_id || getDefaultUnitId(),
@@ -440,12 +529,48 @@ function recordDirectPayment(payment) {
     postPaymentJournal(paymentId, bill.id_billing, amount, method);
 
     const newRemainingAmount = Math.max(remainingAmount - amount, 0);
+    const invoice = buildPaymentInvoice(transactionRecord, bill, student, newRemainingAmount);
+    const whatsappReceipt = newRemainingAmount <= 0
+      ? buildReceiptWhatsAppPreview(
+          student,
+          bill,
+          {
+            id_transaksi: paymentId,
+            tanggal: new Date(),
+            jumlah_bayar: amount,
+            metode: method
+          },
+          actor
+        )
+      : null;
+    const adminNotification = sendAdminPaymentWhatsAppNotification(
+      student,
+      bill,
+      {
+        id_transaksi: paymentId,
+        tanggal: paymentDate,
+        jumlah_bayar: amount,
+        metode: method
+      },
+      actor
+    );
     return {
       ok: true,
       message: newRemainingAmount > 0
         ? `Pembayaran sebagian berhasil dicatat. Sisa tagihan ${newRemainingAmount}.`
         : 'Pembayaran berhasil dicatat dan tagihan lunas',
-      data: { payment_id: paymentId, remaining_amount: newRemainingAmount }
+      data: {
+        payment_id: paymentId,
+        remaining_amount: newRemainingAmount,
+        transaction: {
+          ...transactionRecord,
+          tanggal: toIsoValue(transactionRecord.tanggal),
+          billing_label: `${bill.bulan || ''} ${bill.tahun || ''}`.trim()
+        },
+        invoice,
+        whatsapp_receipt: whatsappReceipt ? whatsappReceipt.data : null,
+        whatsapp_admin: adminNotification || null
+      }
     };
   } catch (error) {
     return { ok: false, message: error.toString() };
@@ -460,6 +585,7 @@ function updatePayment(paymentId, payment) {
 
     const bill = getSheetData('billings').find(item => item.id_billing === transaction.id_billing);
     if (!bill) throw new Error('Tagihan tidak ditemukan');
+    const student = getSheetData('santri').find(item => item.id_santri === bill.id_santri) || null;
 
     const currentAmount = normalizeNumber(transaction.jumlah_bayar);
     const paidByOthers = Math.max(getPaidAmountForBilling(bill.id_billing) - currentAmount, 0);
@@ -484,7 +610,7 @@ function updatePayment(paymentId, payment) {
       direction: 'Masuk',
       amount,
       method,
-      description: `Pembayaran SPP ${bill.bulan} ${bill.tahun}`,
+      description: buildSppPaymentDescription(bill, student),
       fund_id: bill.fund_id || getDefaultFundId(),
       unit_id: bill.unit_id || getDefaultUnitId(),
       program_id: bill.program_id || getDefaultProgramId()

@@ -2,6 +2,9 @@
 .agents/**
 .codex/**
 docs/**
+tools/**
+staging/**
+baileys-gateway/**
 README.md
 CHANGELOG.md
 .gitignore

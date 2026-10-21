@@ -1,5 +1,5 @@
-function getExpenseCategories() {
-  seedOperationalDefaults();
+function getExpenseCategories(skipSeed) {
+  if (!skipSeed) seedOperationalDefaults();
   return {
     ok: true,
     data: getSheetData('expense_categories').filter(category => isTruthyValue(category.is_active))
@@ -8,6 +8,12 @@ function getExpenseCategories() {
 
 function getExpenseAccountCode(categoryName) {
   const category = getSheetData('expense_categories')
+    .find(item => item.name === categoryName && isTruthyValue(item.is_active));
+  return category ? category.account_code : DEFAULT_ACCOUNT_CODES.OPERATIONAL_EXPENSE;
+}
+
+function getExpenseAccountCodeFromCategories(categoryName, categories) {
+  const category = (categories || [])
     .find(item => item.name === categoryName && isTruthyValue(item.is_active));
   return category ? category.account_code : DEFAULT_ACCOUNT_CODES.OPERATIONAL_EXPENSE;
 }
@@ -22,6 +28,10 @@ function addExpense(expense) {
 
     const expenseId = generateId('EXP');
     const proofUrl = saveOptionalProof(expense.proofBase64, expenseId);
+    const categoryRows = getSheetData('expense_categories');
+    const defaultFundId = expense.fund_id || DEFAULT_FUND_ID;
+    const defaultUnitId = expense.unit_id || DEFAULT_UNIT_ID;
+    const defaultProgramId = expense.program_id || DEFAULT_PROGRAM_ID;
     const record = {
       expense_id: expenseId,
       date: expense.date ? new Date(expense.date) : new Date(),
@@ -32,9 +42,9 @@ function addExpense(expense) {
       description: normalizeText(expense.description),
       proof_url: proofUrl,
       project_id: normalizeText(expense.project_id),
-      fund_id: expense.fund_id || getDefaultFundId(),
-      unit_id: expense.unit_id || getDefaultUnitId(),
-      program_id: expense.program_id || getDefaultProgramId(),
+      fund_id: defaultFundId,
+      unit_id: defaultUnitId,
+      program_id: defaultProgramId,
       created_at: new Date(),
       created_by: expense.created_by || 'System'
     };
@@ -54,23 +64,32 @@ function addExpense(expense) {
       unit_id: record.unit_id,
       program_id: record.program_id,
       created_by: record.created_by
-    });
+    }, true);
 
+    seedAccountingDefaults();
     postCashOutJournal({
       date: record.date,
       amount,
       description: `Pengeluaran ${record.category}`,
       source_type: 'expense',
       source_id: expenseId,
-      debit_account_code: getExpenseAccountCode(record.category),
+      debit_account_code: getExpenseAccountCodeFromCategories(record.category, categoryRows),
       memo: record.description,
       fund_id: record.fund_id,
       unit_id: record.unit_id,
       program_id: record.program_id,
       created_by: record.created_by
-    });
+    }, true);
 
-    return { ok: true, message: 'Pengeluaran berhasil disimpan', data: record };
+    return {
+      ok: true,
+      message: 'Pengeluaran berhasil disimpan',
+      data: {
+        ...record,
+        date: toIsoValue(record.date),
+        created_at: toIsoValue(record.created_at)
+      }
+    };
   } catch (error) {
     return { ok: false, message: error.toString() };
   }

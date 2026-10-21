@@ -6,7 +6,7 @@
 <link rel="preconnect" href="https://cdn.jsdelivr.net">
 <link rel="preconnect" href="https://unpkg.com">
 <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
-<script defer src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdn.tailwindcss.com"></script>
 <script defer src="https://unpkg.com/lucide@latest"></script>
 <script defer src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
@@ -25,6 +25,9 @@
         --ui-success: #42be27;
         --ui-danger: #ff154b;
         --ui-warning: #f59e0b;
+        --ui-teal: #0f9f8e;
+        --ui-indigo: #4f46e5;
+        --ui-rose: #e11d48;
         --ui-shadow: 0 10px 28px rgba(34, 64, 102, 0.10);
         --ui-shadow-soft: 0 6px 18px rgba(34, 64, 102, 0.08);
     }
@@ -82,6 +85,25 @@
     }
 
     [x-cloak] { display: none !important; }
+
+    @media print {
+        body { background: #ffffff !important; }
+        body > *:not(#invoice-modal) { display: none !important; }
+        #invoice-modal { position: static !important; display: block !important; background: #ffffff !important; padding: 0 !important; }
+        #invoice-modal > div { max-width: none !important; }
+        .invoice-toolbar { display: none !important; }
+        .invoice-paper { box-shadow: none !important; border-radius: 0 !important; }
+        @page { size: A4; margin: 12mm; }
+
+        body.print-arrears > *:not(#arrears-print-sheet) { display: none !important; }
+        body.print-arrears #arrears-print-sheet { display: block !important; position: static !important; color: #172033 !important; }
+        body.print-arrears #arrears-print-sheet .print-sheet-card { break-inside: avoid; }
+        body.print-arrears #arrears-print-sheet .print-sheet-table { border-collapse: collapse; width: 100%; }
+        body.print-arrears #arrears-print-sheet .print-sheet-table th,
+        body.print-arrears #arrears-print-sheet .print-sheet-table td { border-bottom: 1px solid #d9e1eb; padding: 8px 4px; text-align: left; }
+        body.print-arrears #arrears-print-sheet .print-sheet-table th:last-child,
+        body.print-arrears #arrears-print-sheet .print-sheet-table td:last-child { text-align: right; }
+    }
     .glass,
     .glass-dark,
     .panel {
@@ -240,11 +262,94 @@
         box-shadow: var(--ui-shadow-soft);
     }
 
+    .stat-card .text-zinc-500,
+    .stat-card .text-zinc-400,
+    .stat-card .text-slate-500,
+    .stat-card p {
+        color: rgba(255, 255, 255, 0.88) !important;
+    }
+
     .stat-blue { background: linear-gradient(135deg, #2f8ae7, #2574d4); }
     .stat-green { background: linear-gradient(135deg, #50bf2a, #39a41f); }
     .stat-orange { background: linear-gradient(135deg, #ff8b2d, #ff6b1f); }
     .stat-red { background: linear-gradient(135deg, #ff0f4f, #e6003f); }
     .stat-purple { background: linear-gradient(135deg, #8b5cf6, #6d28d9); }
+    .stat-teal { background: linear-gradient(135deg, #14b8a6, #0f8c7e); }
+    .stat-indigo { background: linear-gradient(135deg, #6366f1, #4338ca); }
+
+    .page-accent {
+        --accent: var(--ui-primary);
+        --accent-soft: rgba(31, 122, 217, 0.12);
+        --accent-faint: rgba(31, 122, 217, 0.06);
+    }
+
+    .accent-blue { --accent: var(--ui-primary); --accent-soft: rgba(31, 122, 217, 0.14); --accent-faint: rgba(31, 122, 217, 0.06); }
+    .accent-green { --accent: var(--ui-success); --accent-soft: rgba(66, 190, 39, 0.16); --accent-faint: rgba(66, 190, 39, 0.07); }
+    .accent-red { --accent: var(--ui-danger); --accent-soft: rgba(255, 21, 75, 0.15); --accent-faint: rgba(255, 21, 75, 0.06); }
+    .accent-orange { --accent: var(--ui-warning); --accent-soft: rgba(245, 158, 11, 0.17); --accent-faint: rgba(245, 158, 11, 0.07); }
+    .accent-purple { --accent: #8b5cf6; --accent-soft: rgba(139, 92, 246, 0.15); --accent-faint: rgba(139, 92, 246, 0.06); }
+    .accent-teal { --accent: var(--ui-teal); --accent-soft: rgba(15, 159, 142, 0.15); --accent-faint: rgba(15, 159, 142, 0.06); }
+    .accent-indigo { --accent: var(--ui-indigo); --accent-soft: rgba(79, 70, 229, 0.15); --accent-faint: rgba(79, 70, 229, 0.06); }
+    .accent-rose { --accent: var(--ui-rose); --accent-soft: rgba(225, 29, 72, 0.15); --accent-faint: rgba(225, 29, 72, 0.06); }
+
+    .page-accent .glass,
+    .page-accent .panel {
+        position: relative;
+        overflow: hidden;
+    }
+
+    .page-accent .glass::before,
+    .page-accent .panel::before {
+        content: "";
+        position: absolute;
+        inset: 0 0 auto 0;
+        height: 4px;
+        background: linear-gradient(90deg, var(--accent), transparent 72%);
+        opacity: 0.95;
+        pointer-events: none;
+    }
+
+    .page-accent .glass > *,
+    .page-accent .panel > * {
+        position: relative;
+    }
+
+    .page-accent thead th {
+        background: linear-gradient(180deg, var(--accent-faint), #f7fbff) !important;
+        color: #344866 !important;
+    }
+
+    .page-accent tbody tr:nth-child(even) {
+        background: #fbfdff;
+    }
+
+    .page-accent tbody tr:hover {
+        background: var(--accent-faint) !important;
+    }
+
+    .page-accent tbody button:not(.btn-action),
+    .page-accent tbody a:not(.btn-action) {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 0.75rem;
+        padding: 0.45rem 0.7rem;
+        font-size: 0.75rem;
+        font-weight: 800;
+        background: var(--accent-soft);
+        color: var(--accent);
+        transition: filter 0.15s ease, transform 0.08s ease;
+    }
+
+    .page-accent tbody button:not(.btn-action):hover,
+    .page-accent tbody a:not(.btn-action):hover {
+        filter: brightness(0.96);
+    }
+
+    .page-accent tbody button:not(.btn-action):active,
+    .page-accent tbody a:not(.btn-action):active {
+        transform: translateY(1px);
+    }
 
     .btn-soft {
         background: #ffffff;
@@ -368,7 +473,8 @@
                     primary: '#1f7ad9',
                     secondary: '#1863b2',
                     success: '#42be27',
-                    danger: '#ff154b'
+                    danger: '#ff154b',
+                    warning: '#f59e0b'
                 }
             }
         }

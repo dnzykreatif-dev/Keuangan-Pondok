@@ -1,4 +1,4 @@
-<div x-show="view === 'cash'" class="animate-in space-y-6">
+<div x-show="view === 'cash'" class="animate-in page-accent accent-teal space-y-6">
     <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div class="stat-card stat-green p-5 rounded-2xl">
             <p class="text-sm font-medium leading-none opacity-90">Kas Masuk</p>
@@ -28,12 +28,12 @@
                 </thead>
                 <tbody class="divide-y divide-[#e6edf5]">
                     <template x-for="row in cashTransactions" :key="row.cash_id">
-                        <tr>
+                        <tr class="border-l-4" :class="row.direction === 'Masuk' ? 'border-l-success' : 'border-l-danger'">
                             <td class="p-4" x-text="formatDate(row.date)"></td>
                             <td class="p-4"><p class="font-semibold" x-text="row.description || row.source_type"></p><p class="text-xs text-zinc-500" x-text="row.source_type + ' / ' + row.source_id"></p></td>
                             <td class="p-4 text-right text-success" x-text="row.direction === 'Masuk' ? formatCurrency(row.amount) : '-'"></td>
                             <td class="p-4 text-right text-danger" x-text="row.direction === 'Keluar' ? formatCurrency(row.amount) : '-'"></td>
-                            <td class="p-4" x-text="row.method"></td>
+                            <td class="p-4"><span class="px-2.5 py-1 rounded-full text-xs font-bold" :class="row.direction === 'Masuk' ? 'bg-success/15 text-success' : 'bg-danger/15 text-danger'" x-text="row.method"></span></td>
                         </tr>
                     </template>
                     <tr x-show="cashTransactions.length === 0"><td colspan="5" class="p-6 text-center text-sm text-zinc-500">Belum ada transaksi kas.</td></tr>

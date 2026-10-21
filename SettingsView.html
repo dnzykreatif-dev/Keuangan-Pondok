@@ -1,5 +1,75 @@
-<div x-show="view === 'settings'" class="animate-in">
+<div x-show="view === 'settings'" class="animate-in page-accent accent-blue">
     <div class="max-w-2xl space-y-6">
+        <div class="glass p-8 rounded-3xl border border-blue-100" x-show="user.role === 'Admin'">
+            <div class="flex items-start justify-between gap-4 mb-5">
+                <div>
+                    <h3 class="text-xl font-semibold flex items-center gap-2">
+                        <i data-lucide="shield-check" class="w-5 h-5 text-primary"></i>
+                        Status Instalasi
+                    </h3>
+                    <p class="mt-1 text-sm text-slate-500">Pemeriksaan sebelum aplikasi diserahkan kepada pondok pembeli.</p>
+                </div>
+                <span class="rounded-full px-3 py-1 text-xs font-bold"
+                      :class="installationManifest.ready ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'"
+                      x-text="installationManifest.ready ? 'Siap diserahterimakan' : 'Belum siap'"></span>
+            </div>
+            <div class="grid gap-3 sm:grid-cols-2">
+                <div class="rounded-2xl bg-[#f5f8fc] p-4">
+                    <p class="text-xs font-semibold uppercase tracking-wide text-slate-400">Mode</p>
+                    <p class="mt-1 font-semibold text-slate-800" x-text="installationManifest.mode"></p>
+                </div>
+                <div class="rounded-2xl bg-[#f5f8fc] p-4">
+                    <p class="text-xs font-semibold uppercase tracking-wide text-slate-400">TenantID</p>
+                    <p class="mt-1 font-semibold text-slate-800 break-all" x-text="installationManifest.tenantId || 'Belum diisi'"></p>
+                </div>
+            </div>
+            <p class="mt-4 text-sm text-slate-600" x-text="installationManifest.note"></p>
+            <div class="mt-4 space-y-2">
+                <template x-for="check in installationManifest.checks" :key="check.key">
+                    <div class="flex items-center justify-between gap-3 rounded-xl border border-slate-100 px-3 py-2 text-sm">
+                        <span class="text-slate-700" x-text="check.label"></span>
+                        <span class="font-semibold" :class="check.ok ? 'text-emerald-600' : 'text-amber-600'" x-text="check.ok ? 'OK' : check.detail"></span>
+                    </div>
+                </template>
+            </div>
+            <p class="mt-4 text-xs leading-relaxed text-slate-400">Script Property diatur dari Apps Script project, bukan dari menu aplikasi. Dalam mode tenant, database lama tidak akan dipakai sebagai fallback.</p>
+        </div>
+        <div class="glass p-8 rounded-3xl border border-emerald-100" x-show="user.role === 'Admin'">
+            <div class="flex items-start justify-between gap-4 mb-5">
+                <div>
+                    <h3 class="text-xl font-semibold flex items-center gap-2">
+                        <i data-lucide="copy-plus" class="w-5 h-5 text-emerald-600"></i>
+                        Buat Instalasi Pondok Baru
+                    </h3>
+                    <p class="mt-1 text-sm text-slate-500">Menyalin template database dan project Apps Script untuk satu pembeli.</p>
+                </div>
+            </div>
+            <div class="grid gap-4 sm:grid-cols-2">
+                <label class="block"><span class="block text-sm font-medium text-slate-500 mb-2">Nama Pondok</span><input class="w-full px-4 py-2.5 rounded-xl outline-none focus:border-primary" x-model="tenantProvisioningForm.pondokName" placeholder="Pondok Al-Hikmah"></label>
+                <label class="block"><span class="block text-sm font-medium text-slate-500 mb-2">TenantID</span><input class="w-full px-4 py-2.5 rounded-xl outline-none focus:border-primary" x-model="tenantProvisioningForm.tenantId" placeholder="pondok-alhikmah"></label>
+                <label class="block"><span class="block text-sm font-medium text-slate-500 mb-2">Email Pemilik</span><input type="email" class="w-full px-4 py-2.5 rounded-xl outline-none focus:border-primary" x-model="tenantProvisioningForm.ownerEmail" placeholder="admin@pondok.sch.id"></label>
+                <label class="block"><span class="block text-sm font-medium text-slate-500 mb-2">Email Support</span><input type="email" class="w-full px-4 py-2.5 rounded-xl outline-none focus:border-primary" x-model="tenantProvisioningForm.supportEmail" placeholder="support@penjual.id"></label>
+            </div>
+            <div class="mt-4 rounded-2xl bg-amber-50 border border-amber-100 p-4 text-xs leading-relaxed text-amber-800">Pastikan <span class="font-mono">PROVISIONING_TEMPLATE_SPREADSHEET_ID</span> sudah menunjuk ke Spreadsheet template kosong. Sistem tidak menyalin database produksi.</div>
+            <button @click="createTenantInstallationAction()" :disabled="tenantProvisioningBusy" class="mt-4 w-full px-5 py-3.5 rounded-2xl text-base font-extrabold shadow-lg transition-all disabled:opacity-70" style="background: linear-gradient(180deg, #22a06b 0%, #168653 100%); color: #ffffff; border: 1px solid #168653;">
+                <span x-text="tenantProvisioningBusy ? 'Menyiapkan instalasi...' : 'Buat Paket Instalasi'"></span>
+            </button>
+            <template x-if="tenantProvisioningResult">
+                <div class="mt-5 rounded-2xl border border-emerald-100 bg-emerald-50 p-4 space-y-3 text-sm">
+                    <p class="font-bold text-emerald-900">Paket berhasil dibuat</p>
+                    <div class="grid gap-2 text-emerald-900">
+                        <a class="underline break-all" :href="tenantProvisioningResult.folderUrl" target="_blank" rel="noopener">Buka folder instalasi</a>
+                        <a class="underline break-all" :href="tenantProvisioningResult.scriptUrl" target="_blank" rel="noopener">Buka project Apps Script</a>
+                        <a class="underline break-all" :href="tenantProvisioningResult.spreadsheetUrl" target="_blank" rel="noopener">Buka Spreadsheet database</a>
+                    </div>
+                    <div class="rounded-xl bg-white/70 p-3">
+                        <p class="font-semibold mb-2">Script Properties:</p>
+                        <pre class="text-xs whitespace-pre-wrap break-all" x-text="(tenantProvisioningResult.appScriptProperties || []).join('\n')"></pre>
+                    </div>
+                    <p class="text-xs text-emerald-800" x-text="tenantProvisioningResult.sharingNote"></p>
+                </div>
+            </template>
+        </div>
         <div class="glass p-8 rounded-3xl">
             <h3 class="text-xl font-semibold mb-6 flex items-center gap-2"><i data-lucide="school" class="w-5 h-5 text-primary"></i>Profil Pesantren</h3>
             <div class="space-y-4">
@@ -24,7 +94,7 @@
                             </div>
                             <div class="flex-1 min-w-0">
                                 <input type="file" accept="image/*" @change="handleLogoSelection($event)" class="block w-full text-sm text-zinc-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-bold file:bg-primary/10 file:text-primary hover:file:bg-primary/20 cursor-pointer">
-                                <p class="text-xs text-slate-400 mt-2">Pilih file logo lalu tekan simpan. Format terbaik PNG atau JPG.</p>
+                                 <p class="text-xs text-slate-400 mt-2">Pilih file logo lalu tekan simpan. Logo ini juga otomatis dipakai pada invoice bukti pembayaran SPP.</p>
                             </div>
                         </div>
                     </div>
@@ -51,6 +121,93 @@ ShopeePay - 08xxxxxxxxxx
 GoPay - 08xxxxxxxxxx"></textarea>
                         <p class="text-xs text-slate-400">Isi nama layanan, nomor/ID tujuan, dan bila perlu nama pemilik. Teks ini bisa dipakai sebagai petunjuk manual pembayaran.</p>
                     </div>
+                </div>
+                <div class="p-4 bg-[#f7fbff] border border-[#dce9f7] rounded-2xl space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-500 mb-2">Notifikasi WhatsApp</label>
+                        <select x-model="settings.wa_enabled" class="w-full px-4 py-2.5 rounded-xl outline-none focus:border-primary">
+                            <option value="TRUE">Aktif</option>
+                            <option value="FALSE">Nonaktif</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-500 mb-2">Mode WA</label>
+                        <select x-model="settings.wa_mode" class="w-full px-4 py-2.5 rounded-xl outline-none focus:border-primary">
+                            <option value="MANUAL_LINK">Manual Link wa.me</option>
+                            <option value="API_GATEWAY">API Gateway</option>
+                        </select>
+                    </div>
+                    <div x-show="settings.wa_mode === 'API_GATEWAY'" class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium text-slate-500 mb-2">URL Gateway WA</label>
+                            <input type="url" x-model="settings.wa_gateway_url" class="w-full px-4 py-2.5 rounded-xl outline-none focus:border-primary" placeholder="https://gateway.example.com/send-message">
+                        </div>
+                        <div class="grid gap-4 sm:grid-cols-2">
+                            <div>
+                                <label class="block text-sm font-medium text-slate-500 mb-2">Field Nomor</label>
+                                <input type="text" x-model="settings.wa_gateway_phone_field" class="w-full px-4 py-2.5 rounded-xl outline-none focus:border-primary" placeholder="phone">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-slate-500 mb-2">Field Pesan</label>
+                                <input type="text" x-model="settings.wa_gateway_message_field" class="w-full px-4 py-2.5 rounded-xl outline-none focus:border-primary" placeholder="message">
+                            </div>
+                        </div>
+                        <div class="grid gap-4 sm:grid-cols-3">
+                            <div>
+                                <label class="block text-sm font-medium text-slate-500 mb-2">Property API Key</label>
+                                <input type="text" x-model="settings.wa_gateway_api_key_property" class="w-full px-4 py-2.5 rounded-xl outline-none focus:border-primary" placeholder="WA_API_KEY">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-slate-500 mb-2">Header Auth</label>
+                                <input type="text" x-model="settings.wa_gateway_auth_header" class="w-full px-4 py-2.5 rounded-xl outline-none focus:border-primary" placeholder="Authorization">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-slate-500 mb-2">Prefix Auth</label>
+                                <input type="text" x-model="settings.wa_gateway_auth_prefix" class="w-full px-4 py-2.5 rounded-xl outline-none focus:border-primary" placeholder="Bearer">
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-slate-500 mb-2">Payload Tambahan JSON</label>
+                            <textarea x-model="settings.wa_gateway_extra_payload" rows="3" class="w-full px-4 py-3 outline-none focus:border-primary text-sm font-mono" placeholder='{"session":"default"}'></textarea>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-slate-500 mb-2">Nomor WA Admin</label>
+                            <input type="text" x-model="settings.wa_admin_phone" class="w-full px-4 py-2.5 rounded-xl outline-none focus:border-primary" placeholder="628xxxxxxxxxx">
+                        </div>
+                        <div class="p-4 bg-white border border-[#dce9f7] rounded-2xl space-y-3">
+                            <div>
+                                <label class="block text-sm font-medium text-slate-500 mb-2">Nomor Tes Gateway</label>
+                                <input type="text" x-model="waTest.phone" class="w-full px-4 py-2.5 rounded-xl outline-none focus:border-primary" placeholder="628xxxxxxxxxx">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-slate-500 mb-2">Pesan Tes</label>
+                                <textarea x-model="waTest.message" rows="3" class="w-full px-4 py-3 outline-none focus:border-primary text-sm"></textarea>
+                            </div>
+                            <button
+                                @click="testWhatsAppGateway()"
+                                :disabled="loading"
+                                class="btn-soft w-full px-4 py-2.5 rounded-xl text-sm font-semibold disabled:opacity-70">
+                                Tes Kirim WA
+                            </button>
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-500 mb-2">Nama Pengirim</label>
+                        <input type="text" x-model="settings.wa_sender_name" class="w-full px-4 py-2.5 rounded-xl outline-none focus:border-primary" placeholder="Admin Pesantren">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-500 mb-2">Template Notifikasi Tagihan</label>
+                        <textarea x-model="settings.wa_tagihan_template" rows="6" class="w-full px-4 py-3 outline-none focus:border-primary text-sm font-mono" placeholder="Assalamu'alaikum {wali_name}, ..."></textarea>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-500 mb-2">Template Notifikasi Lunas</label>
+                        <textarea x-model="settings.wa_lunas_template" rows="6" class="w-full px-4 py-3 outline-none focus:border-primary text-sm font-mono" placeholder="Assalamu'alaikum {wali_name}, ..."></textarea>
+                    </div>
+                    <div x-show="settings.wa_mode === 'API_GATEWAY'">
+                        <label class="block text-sm font-medium text-slate-500 mb-2">Template Notifikasi Admin Saat Ada Pembayaran</label>
+                        <textarea x-model="settings.wa_admin_payment_template" rows="6" class="w-full px-4 py-3 outline-none focus:border-primary text-sm font-mono" placeholder="Pembayaran masuk: ..."></textarea>
+                    </div>
+                    <p class="text-xs text-slate-400 leading-relaxed">Placeholder yang didukung: <span class="font-mono">{wali_name}</span>, <span class="font-mono">{student_name}</span>, <span class="font-mono">{class_name}</span>, <span class="font-mono">{billing_label}</span>, <span class="font-mono">{amount}</span>, <span class="font-mono">{payment_date}</span>, <span class="font-mono">{payment_method}</span>, <span class="font-mono">{payment_id}</span>.</p>
                 </div>
                 <div class="p-4 bg-[#eef5ff] border border-[#cfe0f4] rounded-2xl space-y-3">
                     <p class="text-sm text-slate-700 leading-relaxed">Level 1 menampilkan operasional pondok. Jurnal dan laporan akuntansi tetap tersedia di `Mode Akuntansi` untuk Admin.</p>

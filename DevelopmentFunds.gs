@@ -66,8 +66,8 @@ function deleteDevelopmentProject(projectId) {
   }
 }
 
-function getDevelopmentProjects() {
-  seedOperationalDefaults();
+function getDevelopmentProjects(skipSeed) {
+  if (!skipSeed) seedOperationalDefaults();
 
   const donations = getSheetData('donations').filter(donation => donation.status === 'Masuk');
   const expenses = getSheetData('expenses');

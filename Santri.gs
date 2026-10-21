@@ -67,9 +67,10 @@ function deleteSantri(idSantri) {
 }
 
 function getUnpaidBills(id_santri) {
+  const paidAmountByBillingId = buildPaidAmountByBillingId(getSheetData('transactions'));
   const bills = getSheetData('billings')
     .filter(bill => bill.id_santri === id_santri && bill.status === 'Belum Lunas')
-    .map(enrichBillWithPaymentStatus)
+    .map(bill => enrichBillWithPaymentStatus(bill, paidAmountByBillingId))
     .filter(bill => bill.remaining_amount > 0);
   return { ok: true, data: bills };
 }
@@ -80,25 +81,40 @@ function getStudentFinanceProfile(id_santri) {
     return { ok: false, message: 'Data santri tidak ditemukan' };
   }
 
+  const allTransactions = getSheetData('transactions');
+  const paidAmountByBillingId = buildPaidAmountByBillingId(allTransactions);
   const bills = getSheetData('billings')
     .filter(bill => bill.id_santri === id_santri)
-    .map(enrichBillWithPaymentStatus)
+    .map(bill => enrichBillWithPaymentStatus(bill, paidAmountByBillingId))
     .sort((a, b) => {
       const yearDiff = normalizeNumber(a.tahun) - normalizeNumber(b.tahun);
       if (yearDiff !== 0) return yearDiff;
       return MONTHS_ID.indexOf(a.bulan) - MONTHS_ID.indexOf(b.bulan);
     });
-  const transactions = getSheetData('transactions').filter(transaction => transaction.id_santri === id_santri);
+  const transactions = allTransactions.filter(transaction => transaction.id_santri === id_santri);
+  const billById = bills.reduce((map, bill) => {
+    map[bill.id_billing] = bill;
+    return map;
+  }, {});
+  const enrichedTransactions = transactions.map(transaction => {
+    const bill = billById[transaction.id_billing] || {};
+    return {
+      ...transaction,
+      billing_label: bill.bulan || bill.tahun ? `${bill.bulan || ''} ${bill.tahun || ''}`.trim() : transaction.id_billing
+    };
+  });
   const totalArrears = bills
     .filter(bill => bill.status === 'Belum Lunas')
     .reduce((sum, bill) => sum + normalizeNumber(bill.remaining_amount), 0);
+  const unpaidBills = bills.filter(bill => bill.payment_status !== 'Lunas' && normalizeNumber(bill.remaining_amount) > 0);
 
   return {
     ok: true,
     data: {
       student,
       bills,
-      transactions,
+      unpaidBills,
+      transactions: enrichedTransactions,
       totalArrears
     }
   };

@@ -18,7 +18,9 @@ function toDirectImageUrl(url) {
 function getAppSettings() {
   try {
     const settingsRows = getSheetData('settings');
-    const settings = {};
+    const settings = {
+      ...(typeof getDefaultAppSettings === 'function' ? getDefaultAppSettings() : {})
+    };
 
     settingsRows.forEach(row => {
       settings[row.key] = row.key === 'logo_url' ? toDirectImageUrl(row.value) : row.value;

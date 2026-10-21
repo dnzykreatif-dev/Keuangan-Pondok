@@ -11,8 +11,9 @@ function doGet(e) {
 function include(filename) {
   const template = HtmlService.createTemplateFromFile(filename);
   if (filename === 'AppState') {
-    const appSettings = getAppSettings();
-    template.initialSettingsJson = JSON.stringify(appSettings.ok ? appSettings.data : {});
+    template.initialSettingsJson = JSON.stringify(
+      typeof getDefaultAppSettings === 'function' ? getDefaultAppSettings() : {}
+    );
   }
   return template.evaluate().getContent();
 }

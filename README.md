@@ -17,6 +17,7 @@ Versi ini sudah memiliki modul operasional Level 1 untuk:
 - Laporan ringkas untuk SPP, donasi, pengeluaran, dan arus kas.
 - Payment order QRIS dinamis berbasis adapter provider.
 - Mock QRIS untuk simulasi tanpa akun payment provider.
+- Notifikasi WhatsApp semi-otomatis via link `wa.me` untuk tagihan baru dan bukti lunas.
 - Fondasi jurnal double-entry.
 - Master akun, dana, unit, program, periode fiskal, dan audit log.
 - Laporan dasar menuju PAP: neraca saldo, posisi keuangan, perubahan aset neto, arus kas, dan CaLK dasar.
@@ -31,6 +32,8 @@ Provider QRIS nyata belum dipaksa aktif. Struktur adapter sudah disiapkan agar p
 - Master data santri.
 - Generate tagihan bulanan untuk santri aktif, semua kelas, atau per kelas.
 - Catat pembayaran SPP Tunai/Transfer dan buat payment order QRIS dari tagihan.
+- Invoice bukti pembayaran SPP untuk pembayaran PAID, dengan logo lembaga dan opsi cetak/simpan PDF.
+- Rekap tunggakan per santri, cetak/PDF per santri, dan pratinjau pesan untuk wali.
 - Riwayat payment order dan callback event.
 - Callback pembayaran idempotent untuk mencegah jurnal ganda.
 - Input pengeluaran dan posting jurnal kas keluar otomatis.
@@ -65,6 +68,7 @@ Provider QRIS nyata belum dipaksa aktif. Struktur adapter sudah disiapkan agar p
 - `Accounting.gs`: master akuntansi, posting jurnal, audit log, dan neraca saldo.
 - `Reports.gs`: data laporan PAP dasar.
 - `Settings.gs`: pengaturan aplikasi dan upload logo.
+- `WhatsApp.gs`: normalisasi nomor wali, template pesan WA, link manual `wa.me`, dan log notifikasi.
 - `Index.html`: shell frontend yang merakit partial HTML.
 - `AppHead.html`, `AppState.html`, `MainApp.html`, dan partial modal/view pendukung: modul frontend Alpine.js + Tailwind CSS.
 
@@ -81,6 +85,44 @@ Provider QRIS nyata belum dipaksa aktif. Struktur adapter sudah disiapkan agar p
 
 Ganti password admin setelah setup awal.
 
+## Instalasi untuk Pembeli
+
+Untuk penjualan, gunakan satu project dan satu Spreadsheet per pondok. Data
+pembeli tidak boleh memakai Spreadsheet fallback milik penjual.
+
+Sebelum serah-terima, isi Script Properties pada project instalasi pondok:
+
+```text
+INSTALLATION_MODE=tenant
+TENANT_ID=kode-unik-pondok
+SPREADSHEET_ID=ID-Spreadsheet-milik-pondok
+INSTALLATION_OWNER_EMAIL=email-admin-pondok
+SUPPORT_EMAIL=email-dukungan-penjual
+```
+
+Dalam mode `tenant`, aplikasi akan menolak berjalan jika `SPREADSHEET_ID`
+belum dikonfigurasi. Menu Pengaturan menampilkan status kesiapan instalasi,
+tetapi Script Properties sengaja tidak dapat diubah dari dalam aplikasi.
+
+Gunakan akun Google milik lembaga/pondok sebagai pemilik project dan
+Spreadsheet. Email penjual cukup diberi akses support yang dapat dicabut.
+
+### Provisioning satu klik
+
+Admin penjual dapat menyiapkan paket instalasi dari menu Pengaturan setelah
+mengisi Script Property berikut pada project kontrol:
+
+```text
+PROVISIONING_TEMPLATE_SPREADSHEET_ID=ID-Spreadsheet-template-kosong
+PROVISIONING_TEMPLATE_SCRIPT_ID=ID-project-template-opsional
+PROVISIONING_PARENT_FOLDER_ID=ID-folder-Drive-opsional
+```
+
+Tombol `Buat Paket Instalasi` oleh Admin menyalin Spreadsheet template, menyalin project
+Apps Script, membuat folder khusus pondok, dan membagikan folder kepada email
+pemilik. Deployment, pengisian Script Properties pada project hasil salinan,
+dan transfer ownership tetap harus diverifikasi secara manual.
+
 ## Konfigurasi QRIS
 
 Default aplikasi memakai `MOCK_QRIS`, sehingga alur tagihan dan payment order bisa dites tanpa provider nyata.
@@ -96,15 +138,40 @@ Script Properties yang tersedia:
 - `DUITKU_QRIS_METHOD`: kode metode QRIS jika provider mewajibkan directional payment.
 - `DUITKU_CALLBACK_SECRET`: secret verifikasi callback jika dipakai.
 
+## Konfigurasi WhatsApp
+
+Mode default notifikasi WhatsApp adalah `MANUAL_LINK`, sehingga admin menyiapkan pesan lalu membuka link `wa.me` satu per satu dari preview.
+
+Script Properties tidak dipakai untuk mode ini. Pengaturan disimpan di sheet `settings`:
+
+- `wa_enabled`
+- `wa_mode`
+- `wa_sender_name`
+- `wa_tagihan_template`
+- `wa_lunas_template`
+
+Log preview dan tanda terima disimpan di sheet `notification_logs`.
+
 ## Dokumentasi
 
 - Dokumentasi fitur aplikasi: `docs/FEATURES.md`
 - Panduan pengguna: `docs/MANUAL_BOOK.md`
 - Spesifikasi teknis: `docs/TECHNICAL_SPEC.md`
 - Deployment: `docs/DEPLOYMENT_GUIDE.md`
+- Operasional rilis, pemeriksaan, dan pemulihan loading: `docs/RELEASE_OPERATIONS.md`
 - Roadmap PAP: `docs/ROADMAP_PAP.md`
 - Plan operasional pondok: `docs/PRODUCT_PLAN_OPERASIONAL.md`
 - Riwayat perubahan: `CHANGELOG.md`
+
+Untuk menjaga aplikasi yang sedang berjalan tetap aman, ikuti alur staging di
+`docs/SAFE_DEVELOPMENT_WORKFLOW.md`. Jangan push langsung ke project produksi
+tanpa memeriksa `scriptId` pada `.clasp.json`.
+
+Uji guard instalasi dengan:
+
+```powershell
+node tools/test_installation_config.js
+```
 
 ## Catatan Keamanan
 

@@ -1,9 +1,9 @@
 <!-- Payment Modal -->
 <div x-show="showPaymentModal" x-cloak class="fixed inset-0 bg-black/80 backdrop-blur-sm z-[60] flex items-start sm:items-center justify-center p-3 sm:p-4 overflow-y-auto">
-    <div class="panel p-5 sm:p-8 rounded-2xl w-full max-w-md my-auto max-h-[92vh] overflow-y-auto" @click.away="showPaymentModal = false">
+    <div class="panel p-5 sm:p-8 rounded-2xl w-full max-w-md my-auto max-h-[92vh] overflow-y-auto" @click.away="closePaymentModal()">
         <h2 class="text-xl font-semibold mb-3 sm:mb-4">Catat Pembayaran</h2>
         <p class="text-slate-500 mb-6">Santri: <span class="text-slate-900 font-semibold" x-text="selectedSantri?.nama"></span></p>
-        <div class="space-y-4">
+        <div x-show="!paymentOutcome" class="space-y-4">
             <div>
                 <label class="block text-sm mb-1 text-slate-500">Pilih Tagihan</label>
                 <select x-model="paymentData.id_billing" @change="setPaymentAmountFromSelectedBill" class="w-full p-2.5 outline-none focus:ring-1 focus:ring-primary">
@@ -34,8 +34,34 @@
                 <p class="text-xs text-slate-500 mb-2 italic" x-text="paymentData.method === 'QRIS' ? 'Sistem akan membuat QRIS dinamis lokal dari payload QRIS di pengaturan.' : 'Metode lain akan dicatat manual sebagai pembayaran yang diterima.'"></p>
             </div>
             <div class="flex flex-col sm:flex-row gap-3 sm:gap-4 mt-8">
-                <button @click="showPaymentModal = false" class="flex-1 btn-soft py-3 rounded-lg">Batal</button>
+                <button @click="closePaymentModal()" class="flex-1 btn-soft py-3 rounded-lg">Batal</button>
                 <button @click="handleProcessPayment" class="flex-1 bg-primary text-white py-3 rounded-lg font-semibold" x-text="paymentData.method === 'QRIS' ? 'Buat QRIS' : 'Catat Bayar'"></button>
+            </div>
+        </div>
+        <div x-show="paymentOutcome" class="space-y-4">
+            <div class="p-4 rounded-2xl border border-emerald-200 bg-emerald-50">
+                <p class="font-semibold text-emerald-800" x-text="paymentOutcome?.message || 'Pembayaran berhasil dicatat'"></p>
+                <button
+                    x-show="paymentOutcome?.invoice"
+                    @click="openInvoice(paymentOutcome.invoice)"
+                    class="mt-3 mr-2 bg-slate-900 text-white px-4 py-2 rounded-lg text-sm font-semibold">
+                    Lihat / Cetak Invoice
+                </button>
+                <p class="text-sm text-emerald-700 mt-2" x-show="Number(paymentOutcome?.remaining_amount || 0) === 0 && paymentOutcome?.whatsapp_receipt?.link">
+                    Tanda terima WA siap dikirim ke wali santri.
+                </p>
+                <p class="text-sm text-amber-700 mt-2" x-show="Number(paymentOutcome?.remaining_amount || 0) > 0">
+                    Pembayaran belum lunas penuh, jadi bukti lunas WA belum dibuat.
+                </p>
+            </div>
+            <div class="flex flex-col sm:flex-row gap-3">
+                <button
+                    x-show="paymentOutcome?.whatsapp_receipt?.link"
+                    @click="openWhatsAppLink(paymentOutcome.whatsapp_receipt.link)"
+                    class="flex-1 bg-green-600 text-white py-3 rounded-lg font-semibold">
+                    Kirim Bukti Lunas ke WA
+                </button>
+                <button @click="closePaymentModal()" class="flex-1 btn-soft py-3 rounded-lg">Tutup</button>
             </div>
         </div>
     </div>

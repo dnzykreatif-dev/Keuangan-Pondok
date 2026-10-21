@@ -144,6 +144,16 @@ Data pembayaran yang tercatat:
 - Status.
 - Penerima.
 
+Setiap pembayaran yang berstatus `PAID` juga memiliki invoice bukti pembayaran:
+
+- Nomor invoice otomatis berbasis ID transaksi.
+- Identitas santri, kelas, periode SPP, nominal, metode, dan status pembayaran.
+- Logo dan nama lembaga mengikuti Pengaturan aplikasi.
+- Bisa dibuka dari hasil pembayaran atau riwayat transaksi santri.
+- Bisa dicetak atau disimpan sebagai PDF melalui dialog cetak browser.
+- Ringkasan invoice dapat dibagikan sebagai teks lewat WhatsApp, email,
+  dialog berbagi perangkat, atau disalin. PDF dilampirkan terpisah jika perlu.
+
 ### 7. QRIS Dinamis
 
 QRIS disiapkan sebagai payment order yang bisa memakai provider mock atau provider nyata.
@@ -167,6 +177,8 @@ Fitur:
 - Rekap tunggakan keseluruhan.
 - Filter berdasarkan kelas.
 - Tampilan ringkas daftar santri menunggak.
+- Rekap per santri dengan bulan yang belum lunas, sisa tagihan, tombol cetak/PDF
+  per santri, dan pratinjau pesan WhatsApp untuk wali.
 - Siap dipakai sebagai dasar pengingat atau follow-up ke wali santri.
 
 ### 9. Pengeluaran

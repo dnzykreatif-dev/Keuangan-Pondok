@@ -1,5 +1,28 @@
 # Changelog
 
+## Unreleased - 2026-10
+
+### Rekap Santri dan Pemulihan Startup
+
+- Menambahkan rekap tunggakan per santri, cetak/PDF, dan pratinjau WhatsApp wali.
+- Menambahkan invoice bukti pembayaran serta opsi berbagi ringkasan.
+- Memperbaiki JavaScript yang terpotong saat template Apps Script merender URL
+  WhatsApp, serta urutan pemuatan Tailwind. Deployment Web App diuji pada versi 54.
+- Menambahkan panduan operasional rilis, verifikasi, dan pemulihan.
+
+### Tenant Ownership Handoff
+
+- Menambahkan mode instalasi `tenant` untuk satu pondok satu database.
+- Menambahkan guard agar mode tenant tidak fallback ke Spreadsheet lama.
+- Menambahkan `Installation.gs` dan manifest kesiapan serah-terima.
+- Menampilkan status TenantID, Spreadsheet, pemilik instalasi, dan support di
+  menu Pengaturan Admin.
+- Menambahkan regresi `tools/test_installation_config.js`.
+- Menambahkan provisioning satu klik untuk menyalin Spreadsheet template,
+  project Apps Script, dan folder instalasi calon pembeli.
+- Menambahkan panduan workflow staging agar pengembangan tidak mengganggu
+  aplikasi produksi.
+
 ## 0.4.2 - UI Refresh and Responsive Polish
 
 - Merombak shell frontend menjadi pola admin dashboard dengan sidebar gelap, topbar biru, dan area konten putih yang konsisten.

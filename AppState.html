@@ -6,6 +6,7 @@
             isLoggedIn: false,
             appReady: false,
             loading: false,
+            loadingWatchdogStartedAt: 0,
             bootstrapping: false,
             mobileMenuOpen: false,
             showAdvancedAccounting: false,
@@ -17,6 +18,10 @@
             dashboardData: { incomeVsExpense: [], topExpenses: [], unpaidBills: [] },
             dashboardFilter: { mode: 'ALL', month: ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'][new Date().getMonth()], year: new Date().getFullYear() },
             settings: { school_name: '', logo_url: '', payment_methods: '', ewallet_info: '', ...INITIAL_APP_SETTINGS },
+            installationManifest: { mode: 'legacy', tenantId: '', ready: false, checks: [], note: '' },
+            tenantProvisioningForm: { pondokName: '', tenantId: '', ownerEmail: '', supportEmail: '' },
+            tenantProvisioningResult: null,
+            tenantProvisioningBusy: false,
             dataLoaded: {
                 dashboardKey: '',
                 santri: false,
@@ -70,12 +75,21 @@
             unpaidBills: [],
             showAddSantriModal: false,
             showPaymentModal: false,
+            showInvoiceModal: false,
             showQrisModal: false,
+            showWhatsAppPreviewModal: false,
+            showArrearsShareModal: false,
             selectedSantri: null,
             newSantri: { nama: '', kelas: '', kontak_ortu: '' },
             genBill: { month: 'Januari', year: new Date().getFullYear(), nominal: 500000, targetMode: 'ALL', classFilter: '', studentFilter: '' },
             paymentData: { id_santri: '', id_billing: '', amount: 0, method: 'Tunai', proofBase64: '', penerima: '' },
+            paymentOutcome: null,
+            invoiceData: null,
             qrisData: { student_name: '', billing_label: '', amount: 0, qr_text: '', note: '' },
+            whatsAppPreview: { enabled: false, title: '', subtitle: '', sender_name: '', summary: { total: 0, valid: 0, invalid: 0, missing_phone: 0 }, items: [] },
+            arrearsSharePreview: null,
+            arrearsPrintStudent: null,
+            waTest: { phone: '', message: 'Tes notifikasi WhatsApp dari aplikasi Keuangan Pondok.' },
             pendingLogoFile: null,
             pendingLogoPreview: '',
             newExpense: { date: new Date().toISOString().slice(0, 10), category: 'Dapur', amount: '', supplier: '', method: 'Tunai', description: '', proofBase64: '', project_id: '' },
@@ -83,12 +97,45 @@
             newProject: { name: '', target_budget: '', description: '', status: 'Aktif', start_date: new Date().toISOString().slice(0, 10), end_date: '' },
 
             init() {
-                const savedUser = localStorage.getItem('spp_user');
-                if (savedUser) {
-                    this.user = JSON.parse(savedUser);
+                window.setInterval(() => {
+                    if (!this.loading) {
+                        this.loadingWatchdogStartedAt = 0;
+                        return;
+                    }
+                    if (!this.loadingWatchdogStartedAt) {
+                        this.loadingWatchdogStartedAt = Date.now();
+                        return;
+                    }
+                    if (Date.now() - this.loadingWatchdogStartedAt > 30000) {
+                        this.loading = false;
+                        this.loadingWatchdogStartedAt = 0;
+                        this.notify('Proses terlalu lama atau koneksi terputus. Silakan coba lagi.', 'error');
+                    }
+                }, 1000);
+                let savedUser = null;
+                try {
+                    const savedUserJson = localStorage.getItem('spp_user');
+                    savedUser = savedUserJson ? JSON.parse(savedUserJson) : null;
+                } catch (error) {
+                    localStorage.removeItem('spp_user');
+                    console.warn('Sesi login lama tidak valid, sesi dibersihkan.', error);
+                }
+                if (savedUser && typeof savedUser === 'object') {
+                    this.user = savedUser;
                     this.isLoggedIn = true;
                     this.bootstrapping = true;
-                    this.loadInitialAppData();
+                    window.requestAnimationFrame(() => {
+                        this.appReady = true;
+                        this.hideInitialSplash();
+                    });
+                    try {
+                        this.loadInitialAppData();
+                    } catch (error) {
+                        this.bootstrapping = false;
+                        this.loading = false;
+                        this.notify('Aplikasi gagal memuat data awal. Silakan refresh halaman.', 'error');
+                        console.error('Bootstrap aplikasi gagal', error);
+                    }
                 } else {
                     window.requestAnimationFrame(() => {
                         this.appReady = true;
@@ -100,7 +147,11 @@
             },
 
             refreshIcons() {
-                this.$nextTick(() => { lucide.createIcons(); });
+                window.setTimeout(() => {
+                    if (window.lucide && typeof window.lucide.createIcons === 'function') {
+                        window.lucide.createIcons();
+                    }
+                }, 0);
             },
 
             hideInitialSplash() {
@@ -116,6 +167,8 @@
             },
 
             loadInitialAppData() {
+                this.fetchSettings();
+                this.fetchInstallationManifest();
                 google.script.run
                     .withSuccessHandler(res => {
                         if (res.ok) {
@@ -165,6 +218,38 @@
                 google.script.run
                     .withSuccessHandler(res => { if(res.ok) this.settings = { ...this.settings, ...res.data }; })
                     .getAppSettings();
+            },
+
+            fetchInstallationManifest() {
+                google.script.run
+                    .withSuccessHandler(res => {
+                        if (res && res.ok) this.installationManifest = res.data || this.installationManifest;
+                    })
+                    .withFailureHandler(err => {
+                        console.warn('Manifest instalasi tidak dapat dimuat', err);
+                    })
+                    .getInstallationManifest(this.user);
+            },
+
+            createTenantInstallationAction() {
+                const form = { ...this.tenantProvisioningForm };
+                if (!form.pondokName || !form.tenantId || !form.ownerEmail) {
+                    return this.notify('Nama pondok, TenantID, dan email pemilik wajib diisi.', 'error');
+                }
+                this.tenantProvisioningBusy = true;
+                this.tenantProvisioningResult = null;
+                google.script.run
+                    .withSuccessHandler(res => {
+                        this.tenantProvisioningBusy = false;
+                        if (!res || !res.ok) return this.notify(res?.message || 'Provisioning gagal.', 'error');
+                        this.tenantProvisioningResult = res.data || null;
+                        this.notify(res.message || 'Paket instalasi berhasil dibuat.');
+                    })
+                    .withFailureHandler(err => {
+                        this.tenantProvisioningBusy = false;
+                        this.handleFailure(err);
+                    })
+                    .createTenantInstallation(form, this.user);
             },
 
             notify(message, type = 'success') {
@@ -279,14 +364,78 @@
                     .getSantriList();
             },
 
-            openStudentProfile(santri) {
-                this.selectedSantri = santri;
+            selectPaymentStudentFromMenu() {
+                const selected = this.santriList.find(item => item.id_santri === this.paymentData.id_santri);
+                this.selectedSantri = selected || null;
+                this.paymentOutcome = null;
+                this.unpaidBills = [];
+                this.paymentData = {
+                    ...this.paymentData,
+                    id_billing: '',
+                    amount: '',
+                    proofBase64: '',
+                    penerima: this.user.username
+                };
+                if (!selected) return;
+
                 this.loading = true;
                 google.script.run
                     .withSuccessHandler(res => {
                         this.loading = false;
+                        if (res.ok) {
+                            this.unpaidBills = res.data || [];
+                            this.refreshIcons();
+                        } else {
+                            this.notify(res.message, 'error');
+                        }
+                    })
+                    .withFailureHandler(err => this.handleFailure(err))
+                    .getUnpaidBills(selected.id_santri);
+            },
+
+            preparePaymentMenu() {
+                this.paymentOutcome = null;
+                if (!this.paymentData.id_santri) {
+                    this.selectedSantri = null;
+                    this.unpaidBills = [];
+                    this.paymentData = {
+                        id_santri: '',
+                        id_billing: '',
+                        amount: '',
+                        method: this.paymentData.method || this.paymentMethodOptions[0] || 'Tunai',
+                        proofBase64: '',
+                        penerima: this.user.username
+                    };
+                }
+            },
+
+            openStudentProfile(santri, showLoading = true) {
+                this.selectedSantri = santri;
+                if (showLoading) this.loading = true;
+                google.script.run
+                    .withSuccessHandler(res => {
+                        if (showLoading) this.loading = false;
                         if (res.ok) this.selectedStudentProfile = res.data;
                         else this.notify(res.message, 'error');
+                    })
+                    .withFailureHandler(err => this.handleFailure(err))
+                    .getStudentFinanceProfile(santri.id_santri);
+            },
+
+            openLatestInvoice(santri) {
+                if (!santri) return;
+                this.loading = true;
+                google.script.run
+                    .withSuccessHandler(res => {
+                        this.loading = false;
+                        if (!res.ok) return this.notify(res.message, 'error');
+                        this.selectedSantri = santri;
+                        this.selectedStudentProfile = res.data;
+                        const latestPayment = (res.data.transactions || [])
+                            .filter(transaction => String(transaction.status || '').toUpperCase() === 'PAID')
+                            .sort((a, b) => new Date(b.tanggal || 0).getTime() - new Date(a.tanggal || 0).getTime())[0];
+                        if (!latestPayment) return this.notify('Belum ada pembayaran lunas untuk dibuatkan invoice.', 'error');
+                        this.openInvoiceFromTransaction(latestPayment);
                     })
                     .withFailureHandler(err => this.handleFailure(err))
                     .getStudentFinanceProfile(santri.id_santri);
@@ -526,6 +675,74 @@
                 return this.arrearsList.filter(a => a.kelas === this.selectedClassFilter);
             },
 
+            getFilteredArrearsTotal() {
+                return this.getFilteredArrears()
+                    .reduce((sum, item) => sum + Number(item.remaining_amount || item.nominal || 0), 0);
+            },
+
+            getPartialArrearsCount() {
+                return this.getFilteredArrears()
+                    .filter(item => Number(item.paid_amount || 0) > 0)
+                    .length;
+            },
+
+            getUniqueArrearsStudentCount() {
+                return new Set(this.getFilteredArrears().map(item => item.id_santri || item.nama)).size;
+            },
+
+            getArrearsStudentRecap() {
+                const grouped = {};
+                this.getFilteredArrears().forEach(item => {
+                    const key = item.id_santri || item.nama;
+                    if (!grouped[key]) grouped[key] = { ...item, bills: [], total: 0 };
+                    grouped[key].bills.push(item);
+                    grouped[key].total += Number(item.remaining_amount || item.nominal || 0);
+                });
+                return Object.values(grouped).sort((a, b) => b.total - a.total);
+            },
+
+            openArrearsShare(student) {
+                this.loading = true;
+                google.script.run
+                    .withSuccessHandler(res => {
+                        this.loading = false;
+                        if (!res.ok) return this.notify(res.message, 'error');
+                        this.arrearsSharePreview = res.data;
+                        this.showArrearsShareModal = true;
+                        this.refreshIcons();
+                    })
+                    .withFailureHandler(err => this.handleFailure(err))
+                    .getArrearsWhatsAppPreview(student.id_santri);
+            },
+
+            openArrearsShareLink() {
+                if (!this.arrearsSharePreview?.link) return this.notify(this.arrearsSharePreview?.note || 'Nomor WhatsApp belum siap', 'error');
+                window.open(this.arrearsSharePreview.link, '_blank', 'noopener');
+            },
+
+            printArrears() {
+                if (!this.getArrearsStudentRecap().length) return this.notify('Tidak ada data tunggakan untuk dicetak', 'error');
+                this.arrearsPrintStudent = null;
+                document.body.classList.add('print-arrears');
+                window.setTimeout(() => window.print(), 50);
+                window.setTimeout(() => document.body.classList.remove('print-arrears'), 1000);
+            },
+
+            printArrearsStudent(student) {
+                if (!student) return;
+                this.arrearsPrintStudent = student;
+                document.body.classList.add('print-arrears');
+                window.setTimeout(() => window.print(), 50);
+                window.setTimeout(() => {
+                    document.body.classList.remove('print-arrears');
+                    this.arrearsPrintStudent = null;
+                }, 1000);
+            },
+
+            getArrearsPrintRecap() {
+                return this.arrearsPrintStudent ? [this.arrearsPrintStudent] : this.getArrearsStudentRecap();
+            },
+
             handleAddSantri() {
                 if(!this.newSantri.nama) return this.notify("Nama wajib diisi", "error");
                 this.loading = true;
@@ -631,6 +848,7 @@
 
             openPaymentModal(santri) {
                 this.selectedSantri = santri;
+                this.paymentOutcome = null;
                 this.paymentData = {
                     id_santri: santri.id_santri,
                     id_billing: '',
@@ -649,6 +867,150 @@
                     })
                     .withFailureHandler(err => this.handleFailure(err))
                     .getUnpaidBills(santri.id_santri);
+            },
+
+            closePaymentModal() {
+                this.showPaymentModal = false;
+                this.paymentOutcome = null;
+            },
+
+            closeInvoiceModal() {
+                this.showInvoiceModal = false;
+                this.invoiceData = null;
+            },
+
+            openInvoice(invoice) {
+                if (!invoice) return this.notify('Data invoice belum tersedia', 'error');
+                this.invoiceData = {
+                    ...invoice,
+                    institution_name: invoice.institution_name || this.settings.school_name || 'Ma\'had Raudhatul Ulum Pemangkat',
+                    logo_url: invoice.logo_url || this.settings.logo_url || '',
+                    invoice_number: invoice.invoice_number || `INV-${invoice.payment_id || invoice.id_transaksi || Date.now()}`
+                };
+                this.showInvoiceModal = true;
+                this.refreshIcons();
+            },
+
+            openInvoiceFromTransaction(transaction) {
+                if (!transaction) return;
+                const student = this.selectedStudentProfile?.student || this.selectedSantri || {};
+                const bill = (this.selectedStudentProfile?.bills || []).find(item => item.id_billing === transaction.id_billing) || {};
+                this.openInvoice({
+                    invoice_number: `INV-${transaction.id_transaksi}`,
+                    payment_id: transaction.id_transaksi,
+                    issued_at: transaction.tanggal,
+                    institution_name: this.settings.school_name || 'Ma\'had Raudhatul Ulum Pemangkat',
+                    logo_url: this.settings.logo_url || '',
+                    student_name: student.nama || '-',
+                    student_class: student.kelas || '-',
+                    billing_label: transaction.billing_label || `${bill.bulan || ''} ${bill.tahun || ''}`.trim() || transaction.id_billing || '-',
+                    billing_id: transaction.id_billing || '-',
+                    amount: Number(transaction.jumlah_bayar || 0),
+                    total_amount: Number(bill.nominal || transaction.jumlah_bayar || 0),
+                    remaining_amount: Number(bill.remaining_amount || 0),
+                    status: Number(bill.remaining_amount || 0) <= 0 ? 'LUNAS' : 'PEMBAYARAN SEBAGIAN',
+                    method: transaction.metode || '-',
+                    recipient: transaction.penerima || '-',
+                    recipient_phone: student.kontak_ortu || '',
+                    description: `Pembayaran SPP ${transaction.billing_label || transaction.id_billing || ''}`.trim()
+                });
+            },
+
+            printInvoice() {
+                if (!this.invoiceData) return;
+                window.print();
+            },
+
+            getInvoiceShareText() {
+                const invoice = this.invoiceData || {};
+                return [
+                    `Bukti Pembayaran SPP - ${invoice.institution_name || 'Keuangan Pondok'}`,
+                    '',
+                    `Nama: ${invoice.student_name || '-'}`,
+                    `Kelas: ${invoice.student_class || '-'}`,
+                    `Periode: ${invoice.billing_label || '-'}`,
+                    `Nominal dibayar: ${this.formatCurrency(invoice.amount || 0)}`,
+                    `Metode: ${invoice.method || '-'}`,
+                    `Tanggal: ${this.formatDate(invoice.issued_at)}`,
+                    `No. Invoice: ${invoice.invoice_number || '-'}`,
+                    `Status: ${invoice.status || '-'}`,
+                    '',
+                    'Terima kasih.'
+                ].join('\\n');
+            },
+
+            shareInvoiceWhatsApp() {
+                if (!this.invoiceData) return;
+                const digits = String(this.invoiceData.recipient_phone || '').replace(/\D/g, '');
+                const phone = digits.startsWith('62') ? digits : digits.startsWith('0') ? `62${digits.slice(1)}` : digits.startsWith('8') ? `62${digits}` : '';
+                const target = ('https:' + '/' + '/wa.me/') + (phone || '');
+                window.open(`${target}?text=${encodeURIComponent(this.getInvoiceShareText())}`, '_blank', 'noopener,noreferrer');
+            },
+
+            async shareInvoiceNative() {
+                if (!this.invoiceData) return;
+                const text = this.getInvoiceShareText();
+                if (navigator.share) {
+                    try {
+                        await navigator.share({ title: 'Bukti Pembayaran SPP', text });
+                    } catch (error) {
+                        if (error.name !== 'AbortError') this.notify('Berbagi invoice dibatalkan atau gagal.', 'error');
+                    }
+                    return;
+                }
+                await this.copyInvoiceSummary();
+            },
+
+            shareInvoiceEmail() {
+                if (!this.invoiceData) return;
+                const subject = `Bukti Pembayaran SPP - ${this.invoiceData.student_name || ''}`.trim();
+                window.location.href = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(this.getInvoiceShareText())}`;
+            },
+
+            async copyInvoiceSummary() {
+                if (!this.invoiceData) return;
+                const text = this.getInvoiceShareText();
+                try {
+                    await navigator.clipboard.writeText(text);
+                    this.notify('Ringkasan invoice berhasil disalin.');
+                } catch (error) {
+                    const helper = document.createElement('textarea');
+                    helper.value = text;
+                    helper.style.position = 'fixed';
+                    helper.style.opacity = '0';
+                    document.body.appendChild(helper);
+                    helper.select();
+                    document.execCommand('copy');
+                    helper.remove();
+                    this.notify('Ringkasan invoice berhasil disalin.');
+                }
+            },
+
+            openWhatsAppLink(link) {
+                if (!link) {
+                    return this.notify('Link WhatsApp belum tersedia', 'error');
+                }
+                window.open(link, '_blank', 'noopener,noreferrer');
+            },
+
+            openSequentialWhatsAppLinks() {
+                const items = (this.whatsAppPreview.items || []).filter(item => item.link);
+                if (!items.length) {
+                    return this.notify('Tidak ada nomor WA valid untuk dibuka', 'error');
+                }
+
+                let index = 0;
+                const openNext = () => {
+                    if (index >= items.length) return;
+                    window.open(items[index].link, '_blank', 'noopener,noreferrer');
+                    index += 1;
+                    if (index < items.length) {
+                        window.setTimeout(openNext, 1200);
+                    }
+                };
+
+                this.notify(`Membuka ${items.length} link WhatsApp secara berurutan`);
+                openNext();
             },
 
             setPaymentAmountFromSelectedBill() {
@@ -686,12 +1048,48 @@
                                 return;
                             }
 
+                            this.paymentOutcome = {
+                                message: res.message || 'Pembayaran berhasil dicatat',
+                                payment_id: res.data?.payment_id || '',
+                                remaining_amount: res.data?.remaining_amount || 0,
+                                whatsapp_receipt: res.data?.whatsapp_receipt || null,
+                                invoice: res.data?.invoice || null
+                            };
+                            if (res.data?.invoice) this.openInvoice(res.data.invoice);
+                            if (this.selectedStudentProfile && res.data?.transaction) {
+                                this.selectedStudentProfile.transactions = [res.data.transaction, ...(this.selectedStudentProfile.transactions || [])];
+                                const bill = (this.selectedStudentProfile.bills || []).find(item => item.id_billing === res.data.transaction.id_billing);
+                                if (bill) {
+                                    bill.paid_amount = Number(bill.paid_amount || 0) + Number(res.data.transaction.jumlah_bayar || 0);
+                                    bill.remaining_amount = Math.max(Number(bill.nominal || 0) - Number(bill.paid_amount || 0), 0);
+                                    bill.payment_status = bill.remaining_amount <= 0 ? 'Lunas' : bill.paid_amount > 0 ? 'Sebagian' : 'Belum Lunas';
+                                    bill.status = bill.remaining_amount <= 0 ? 'Lunas' : 'Belum Lunas';
+                                }
+                                this.selectedStudentProfile.unpaidBills = (this.selectedStudentProfile.bills || [])
+                                    .filter(item => item.payment_status !== 'Lunas' && Number(item.remaining_amount || 0) > 0);
+                                this.selectedStudentProfile.totalArrears = this.selectedStudentProfile.unpaidBills
+                                    .reduce((sum, item) => sum + Number(item.remaining_amount || item.nominal || 0), 0);
+                            }
+                            if (res.data?.transaction) {
+                                const activeBill = this.unpaidBills.find(item => item.id_billing === res.data.transaction.id_billing);
+                                if (activeBill) {
+                                    activeBill.paid_amount = Number(activeBill.paid_amount || 0) + Number(res.data.transaction.jumlah_bayar || 0);
+                                    activeBill.remaining_amount = Math.max(Number(activeBill.nominal || 0) - Number(activeBill.paid_amount || 0), 0);
+                                    activeBill.payment_status = activeBill.remaining_amount <= 0 ? 'Lunas' : activeBill.paid_amount > 0 ? 'Sebagian' : 'Belum Lunas';
+                                }
+                                this.unpaidBills = this.unpaidBills.filter(item => Number(item.remaining_amount || item.nominal || 0) > 0);
+                                this.paymentData.id_billing = '';
+                                this.paymentData.amount = '';
+                                this.paymentData.proofBase64 = '';
+                            }
                             this.notify(res.message || "Pembayaran berhasil dicatat");
-                            this.showPaymentModal = false;
                             this.invalidateData('paymentOrders', 'cashTransactions', 'arrears', 'santri', 'operationalReport', 'reportData', 'journalEntries', 'activityReport');
-                            this.fetchDashboard(true);
+                            this.refreshDashboardSilently();
                             if (this.view === 'payments') this.fetchPaymentOrders(true);
-                            if (this.view === 'santri') this.fetchSantri(true);
+                            if (this.view === 'santri') {
+                                this.fetchSantri(true);
+                                if (this.selectedSantri) window.setTimeout(() => this.openStudentProfile(this.selectedSantri, false), 0);
+                            }
                             if (this.view === 'arrears') this.fetchArrears(true);
                             if (this.view === 'cash') this.fetchCash(true);
                             if (this.view === 'reports') this.fetchOperationalReports(true);
@@ -780,6 +1178,10 @@
                         this.loading = false;
                         if (!res.ok) return this.notify(res.message, 'error');
                         this.notify(res.message);
+                        if (res.notification_preview && Array.isArray(res.notification_preview.items) && res.notification_preview.items.length) {
+                            this.whatsAppPreview = res.notification_preview;
+                            this.showWhatsAppPreviewModal = true;
+                        }
                         this.invalidateData('arrears', 'operationalReport', 'reportData', 'journalEntries', 'activityReport');
                         this.view = 'arrears';
                         this.fetchDashboard(true);
@@ -789,11 +1191,11 @@
                         if (this.view === 'accountingReports') this.fetchReports(true);
                     })
                     .withFailureHandler(err => this.handleFailure(err))
-                    .generateMonthlyBills(this.genBill.month, this.genBill.year, this.genBill.nominal, classFilter, studentFilter);
+                    .generateMonthlyBills(this.genBill.month, this.genBill.year, this.genBill.nominal, classFilter, studentFilter, this.user?.username || 'System');
             },
 
             renderQrisCode() {
-                this.$nextTick(() => {
+                window.setTimeout(() => {
                     const container = document.getElementById('qris-code');
                     if (!container) return;
                     container.innerHTML = '';
@@ -814,7 +1216,7 @@
                     } else {
                         container.textContent = this.qrisData.qr_text;
                     }
-                });
+                }, 0);
             },
 
             openQrisModal(santri) {
@@ -861,10 +1263,15 @@
                         this.loading = false;
                         if (res.ok) {
                             this.notify(res.message);
+                            if (res.data) {
+                                this.expenseList = [res.data, ...this.expenseList]
+                                    .sort((a, b) => new Date(b.date || b.created_at) - new Date(a.date || a.created_at))
+                                    .slice(0, 100);
+                                this.dataLoaded.expenseList = true;
+                            }
                             this.newExpense = { date: new Date().toISOString().slice(0, 10), category: 'Dapur', amount: '', supplier: '', method: 'Tunai', description: '', proofBase64: '', project_id: '' };
-                            this.invalidateData('expenseList', 'expenseCategories', 'cashTransactions', 'developmentProjects', 'operationalReport', 'reportData', 'journalEntries', 'activityReport');
-                            this.fetchDashboard(true);
-                            if (this.view === 'expenses') this.fetchExpenses(true);
+                            this.invalidateData('cashTransactions', 'developmentProjects', 'operationalReport', 'reportData', 'journalEntries', 'activityReport');
+                            this.refreshDashboardSilently();
                             if (this.view === 'cash') this.fetchCash(true);
                             if (this.view === 'development') this.fetchDevelopmentProjects(true);
                             if (this.view === 'reports') this.fetchOperationalReports(true);
@@ -1142,6 +1549,20 @@
                     await this.updateSettingAsync('qris_id', this.settings.qris_id || '');
                     await this.updateSettingAsync('payment_methods', this.settings.payment_methods || '');
                     await this.updateSettingAsync('ewallet_info', this.settings.ewallet_info || '');
+                    await this.updateSettingAsync('wa_enabled', this.settings.wa_enabled || 'TRUE');
+                    await this.updateSettingAsync('wa_mode', this.settings.wa_mode || 'MANUAL_LINK');
+                    await this.updateSettingAsync('wa_sender_name', this.settings.wa_sender_name || '');
+                    await this.updateSettingAsync('wa_gateway_url', this.settings.wa_gateway_url || '');
+                    await this.updateSettingAsync('wa_gateway_api_key_property', this.settings.wa_gateway_api_key_property || 'WA_API_KEY');
+                    await this.updateSettingAsync('wa_gateway_auth_header', this.settings.wa_gateway_auth_header || 'Authorization');
+                    await this.updateSettingAsync('wa_gateway_auth_prefix', this.settings.wa_gateway_auth_prefix || 'Bearer');
+                    await this.updateSettingAsync('wa_gateway_phone_field', this.settings.wa_gateway_phone_field || 'phone');
+                    await this.updateSettingAsync('wa_gateway_message_field', this.settings.wa_gateway_message_field || 'message');
+                    await this.updateSettingAsync('wa_gateway_extra_payload', this.settings.wa_gateway_extra_payload || '');
+                    await this.updateSettingAsync('wa_admin_phone', this.settings.wa_admin_phone || '');
+                    await this.updateSettingAsync('wa_admin_payment_template', this.settings.wa_admin_payment_template || '');
+                    await this.updateSettingAsync('wa_tagihan_template', this.settings.wa_tagihan_template || '');
+                    await this.updateSettingAsync('wa_lunas_template', this.settings.wa_lunas_template || '');
 
                     if (this.pendingLogoFile) {
                         const logoBase64 = await new Promise((resolve, reject) => {
@@ -1166,13 +1587,38 @@
                 }
             },
 
+            testWhatsAppGateway() {
+                if (this.settings.wa_mode !== 'API_GATEWAY') {
+                    return this.notify('Pilih mode API Gateway dulu', 'error');
+                }
+                if (!this.waTest.phone) {
+                    return this.notify('Isi nomor tujuan tes dulu', 'error');
+                }
+
+                this.loading = true;
+                google.script.run
+                    .withSuccessHandler(res => {
+                        this.loading = false;
+                        if (!res.ok) return this.notify(res.message, 'error');
+                        this.notify(res.message || 'Tes kirim berhasil');
+                    })
+                    .withFailureHandler(err => this.handleFailure(err))
+                    .testWhatsAppGateway(this.waTest.phone, this.waTest.message);
+            },
+
             openView(viewName) {
                 this.view = viewName;
+                if (viewName === 'settings') this.fetchInstallationManifest();
+                if (viewName === 'settings') this.fetchInstallationManifest();
                 this.mobileMenuOpen = false;
                 if (viewName === 'santri') this.fetchSantri(false, false);
                 if (viewName === 'billing') this.fetchSantri(false, false);
                 if (viewName === 'arrears') this.fetchArrears(false, false);
-                if (viewName === 'payments') this.fetchPaymentOrders(false, false);
+                if (viewName === 'payments') {
+                    this.preparePaymentMenu();
+                    this.fetchPaymentOrders(false, false);
+                    this.fetchSantri(false, false);
+                }
                 if (viewName === 'expenses') this.fetchExpenses(false, false);
                 if (viewName === 'donations') this.fetchDonations(false, false);
                 if (viewName === 'cash') {

@@ -1,13 +1,104 @@
-<div x-show="view === 'arrears'" class="animate-in space-y-4">
-    <div class="glass p-5 rounded-2xl flex flex-col sm:flex-row justify-between gap-4 sm:items-center">
+<div x-show="view === 'arrears'" class="animate-in page-accent accent-red space-y-5">
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div class="stat-card stat-red rounded-2xl p-5 min-h-[128px] flex flex-col justify-between">
+            <div class="flex items-center justify-between">
+                <p class="text-sm font-medium opacity-90">Total Tunggakan</p>
+                <i data-lucide="alert-circle" class="w-5 h-5 opacity-90"></i>
+            </div>
+            <h3 class="text-2xl font-semibold leading-tight" x-text="formatCurrency(getFilteredArrearsTotal())"></h3>
+            <p class="text-xs opacity-90" x-text="getFilteredArrears().length + ' tagihan belum lunas'"></p>
+        </div>
+        <div class="stat-card stat-orange rounded-2xl p-5 min-h-[128px] flex flex-col justify-between">
+            <div class="flex items-center justify-between">
+                <p class="text-sm font-medium opacity-90">Santri Menunggak</p>
+                <i data-lucide="users" class="w-5 h-5 opacity-90"></i>
+            </div>
+            <h3 class="text-2xl font-semibold leading-tight" x-text="getUniqueArrearsStudentCount()"></h3>
+            <p class="text-xs opacity-90">Santri dengan tagihan terbuka</p>
+        </div>
+        <div class="stat-card stat-blue rounded-2xl p-5 min-h-[128px] flex flex-col justify-between">
+            <div class="flex items-center justify-between">
+                <p class="text-sm font-medium opacity-90">Dibayar Sebagian</p>
+                <i data-lucide="wallet-cards" class="w-5 h-5 opacity-90"></i>
+            </div>
+            <h3 class="text-2xl font-semibold leading-tight" x-text="getPartialArrearsCount()"></h3>
+            <p class="text-xs opacity-90">Tagihan sudah ada cicilan</p>
+        </div>
+    </div>
+
+    <div class="glass p-5 rounded-2xl flex flex-col sm:flex-row justify-between gap-4 sm:items-center border-l-4 border-l-primary">
         <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center">
+                <i data-lucide="filter" class="w-5 h-5"></i>
+            </div>
             <label class="text-sm font-medium text-slate-500">Filter Kelas:</label>
             <select x-model="selectedClassFilter" class="px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-primary">
                 <option value="">Semua Kelas</option>
                 <template x-for="cls in uniqueClasses" :key="cls"><option :value="cls" x-text="cls"></option></template>
             </select>
         </div>
-        <div class="text-sm text-zinc-500">Menampilkan <span class="text-slate-900 font-bold" x-text="getFilteredArrears().length"></span> tunggakan</div>
+        <div class="flex items-center gap-3">
+            <div class="text-sm text-zinc-500">Menampilkan <span class="text-primary font-bold" x-text="getFilteredArrears().length"></span> tunggakan</div>
+            <button @click="printArrears()" class="btn-action btn-action-primary btn-action-sm whitespace-nowrap">
+                <i data-lucide="printer" class="w-4 h-4"></i>
+                <span>Cetak / PDF</span>
+            </button>
+        </div>
+    </div>
+
+    <div class="flex items-end justify-between gap-3">
+        <div>
+            <p class="text-xs uppercase tracking-[0.18em] text-primary font-bold">Ringkasan untuk wali santri</p>
+            <h2 class="text-xl font-semibold mt-1">Rekap per santri</h2>
+        </div>
+        <p class="hidden sm:block text-sm text-slate-500">Satu pesan berisi seluruh bulan yang belum lunas</p>
+    </div>
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <template x-for="student in getArrearsStudentRecap()" :key="student.id_santri || student.nama">
+            <div class="glass rounded-2xl p-5 border border-[#e6edf5] hover:border-primary/40 transition-colors">
+                <div class="flex items-start justify-between gap-3">
+                    <div class="flex items-center gap-3 min-w-0">
+                        <div class="w-11 h-11 rounded-2xl bg-danger/10 text-danger flex items-center justify-center font-bold text-lg" x-text="(student.nama || '?').slice(0, 1)"></div>
+                        <div class="min-w-0">
+                            <p class="font-semibold truncate" x-text="student.nama"></p>
+                            <p class="text-xs text-slate-500" x-text="(student.kelas || '-') + ' · ' + student.bills.length + ' bulan'"></p>
+                        </div>
+                    </div>
+                    <span class="text-xs font-bold px-2.5 py-1 rounded-full bg-danger/10 text-danger">Belum lunas</span>
+                </div>
+                <div class="mt-4 flex items-end justify-between gap-3">
+                    <div>
+                        <p class="text-xs text-slate-500">Total yang perlu dibayar</p>
+                        <p class="text-2xl font-bold text-danger mt-1" x-text="formatCurrency(student.total)"></p>
+                    </div>
+                    <div class="flex flex-wrap justify-end gap-2">
+                        <button @click="printArrearsStudent(student)" class="btn-action btn-action-primary btn-action-sm whitespace-nowrap" title="Cetak atau simpan PDF">
+                            <i data-lucide="printer" class="w-4 h-4"></i>
+                            <span>Cetak PDF</span>
+                        </button>
+                        <button @click="openArrearsShare(student)" class="btn-action btn-action-success btn-action-sm whitespace-nowrap">
+                            <i data-lucide="share-2" class="w-4 h-4"></i>
+                            <span>Bagikan WA</span>
+                        </button>
+                    </div>
+                </div>
+                <div class="mt-4 pt-3 border-t border-[#e6edf5] flex flex-wrap gap-2">
+                    <template x-for="bill in student.bills" :key="bill.id_billing">
+                        <span class="text-xs px-2.5 py-1 rounded-lg bg-slate-100 text-slate-600" x-text="bill.bulan + ' ' + bill.tahun"></span>
+                    </template>
+                </div>
+            </div>
+        </template>
+        <div x-show="getArrearsStudentRecap().length === 0" class="lg:col-span-2 glass rounded-2xl p-8 text-center text-sm text-slate-500">
+            Tidak ada rekap tunggakan pada filter ini.
+        </div>
+    </div>
+
+    <div class="flex items-end justify-between gap-3 pt-2">
+        <div>
+            <p class="text-xs uppercase tracking-[0.18em] text-slate-400 font-bold">Rincian transaksi</p>
+            <h2 class="text-xl font-semibold mt-1">Detail per tagihan</h2>
+        </div>
     </div>
     <div class="glass rounded-2xl overflow-hidden">
         <div class="overflow-x-auto">
@@ -17,19 +108,41 @@
                 </thead>
                 <tbody class="divide-y divide-[#e6edf5]">
                     <template x-for="a in getFilteredArrears()" :key="a.id_billing">
-                        <tr class="hover:bg-[#f5f9fd] transition-colors">
-                            <td class="p-4 font-semibold" x-text="a.nama"></td>
-                            <td class="p-4" x-text="a.kelas"></td>
-                            <td class="p-4" x-text="a.bulan + ' ' + a.tahun"></td>
+                        <tr class="hover:bg-[#f5f9fd] transition-colors border-l-4" :class="Number(a.paid_amount || 0) > 0 ? 'border-l-warning' : 'border-l-danger'">
+                            <td class="p-4">
+                                <div class="flex items-center gap-3">
+                                    <div class="w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold" :class="Number(a.paid_amount || 0) > 0 ? 'bg-warning/15 text-warning' : 'bg-danger/15 text-danger'" x-text="(a.nama || '?').slice(0, 1)"></div>
+                                    <div>
+                                        <p class="font-semibold" x-text="a.nama"></p>
+                                        <p class="text-xs text-zinc-500" x-text="a.id_santri || '-'"></p>
+                                    </div>
+                                </div>
+                            </td>
+                            <td class="p-4">
+                                <span class="inline-flex items-center rounded-full bg-primary/10 text-primary px-3 py-1 text-xs font-bold" x-text="a.kelas"></span>
+                            </td>
+                            <td class="p-4">
+                                <p class="font-semibold" x-text="a.bulan + ' ' + a.tahun"></p>
+                                <span class="inline-flex mt-1 rounded-full px-2.5 py-1 text-xs font-bold" :class="Number(a.paid_amount || 0) > 0 ? 'bg-warning/15 text-warning' : 'bg-danger/15 text-danger'" x-text="Number(a.paid_amount || 0) > 0 ? 'Sebagian' : 'Belum Bayar'"></span>
+                            </td>
                             <td class="p-4 text-right">
-                                <p class="text-danger font-semibold" x-text="formatCurrency(a.remaining_amount || a.nominal)"></p>
+                                <p class="text-danger font-bold" x-text="formatCurrency(a.remaining_amount || a.nominal)"></p>
                                 <p x-show="a.paid_amount > 0" class="text-xs text-zinc-500" x-text="'Dibayar ' + formatCurrency(a.paid_amount)"></p>
                             </td>
                             <td class="p-4">
-                                <div class="flex flex-wrap gap-2">
-                                    <a :href="'https://wa.me/' + a.kontak + '?text=Assalamu%27alaikum%2C%20mohon%20segera%20melunasi%20SPP%20bulan%20' + a.bulan" target="_blank" class="bg-success/20 text-success px-3 py-1 rounded text-xs font-semibold">Remind WA</a>
-                                    <button @click="editBillingData(a)" class="bg-primary/20 text-primary px-3 py-1 rounded text-xs font-semibold">Edit</button>
-                                    <button @click="deleteBillingData(a)" class="bg-danger/20 text-danger px-3 py-1 rounded text-xs font-semibold">Hapus</button>
+                                <div class="flex flex-wrap gap-2.5">
+                                    <a :href="'https://wa.me/' + a.kontak + '?text=Assalamu%27alaikum%2C%20mohon%20segera%20melunasi%20SPP%20bulan%20' + a.bulan" target="_blank" class="btn-action btn-action-success btn-action-sm">
+                                        <i data-lucide="message-circle" class="w-4 h-4"></i>
+                                        <span>Remind WA</span>
+                                    </a>
+                                    <button @click="editBillingData(a)" class="btn-action btn-action-primary btn-action-sm">
+                                        <i data-lucide="pencil-line" class="w-4 h-4"></i>
+                                        <span>Edit</span>
+                                    </button>
+                                    <button @click="deleteBillingData(a)" class="btn-action btn-action-danger btn-action-sm">
+                                        <i data-lucide="trash-2" class="w-4 h-4"></i>
+                                        <span>Hapus</span>
+                                    </button>
                                 </div>
                             </td>
                         </tr>

@@ -1,5 +1,5 @@
 function getSpreadsheet() {
-  return SpreadsheetApp.openById(APP_CONFIG.SPREADSHEET_ID);
+  return SpreadsheetApp.openById(getConfiguredSpreadsheetId_());
 }
 
 function getAppProperty(name, fallback = '') {
@@ -61,6 +61,15 @@ function getBootstrapCacheKey(scope) {
 
 function invalidateBootstrapCache() {
   PropertiesService.getScriptProperties().setProperty('BOOTSTRAP_CACHE_VERSION', String(Date.now()));
+}
+
+function withSetupCache(scope, ttlSeconds, setupFn) {
+  const cache = CacheService.getScriptCache();
+  const cacheKey = `setup:${scope || 'default'}`;
+  if (cache.get(cacheKey) === 'done') return;
+
+  setupFn();
+  cache.put(cacheKey, 'done', ttlSeconds || 21600);
 }
 
 function withBootstrapCache(scope, ttlSeconds, producer) {
